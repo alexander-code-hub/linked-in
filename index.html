@@ -186,6 +186,8 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
         .pillar-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .full-span { grid-column: 1 / -1; }
+        .rotation-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center; }
         .pillar-card h4 { font-size: 15px; color: var(--navy); margin-bottom: 6px; }
         .pillar-card p { font-size: 13px; color: var(--gray-500); margin-bottom: 12px; }
         .pillar-tag {
@@ -380,6 +382,8 @@
             .pillar-card { padding: 16px; }
             .post-idea .idea-meta { flex-wrap: wrap; }
             .legend-item { margin-right: 10px; margin-bottom: 4px; }
+            .full-span { grid-column: auto; }
+            .rotation-grid { grid-template-columns: 1fr 1fr; }
         }
 
         /* ── Scroll ── */
@@ -719,7 +723,7 @@
             <p style="font-size:13px;color:var(--gray-500);">3-5 thoughtful 2-sentence comments per week on CFOs, finance leaders, and CPA voices. This generates more profile views than posting.</p>
             <div class="score-bar"><div class="score-fill" style="width:85%"></div></div>
         </div>
-        <div class="card" style="grid-column: span 3;">
+        <div class="card full-span">
             <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">7. The Shelf Test</h4>
             <p style="font-size:13px;color:var(--gray-500);">"Would I be proud of this post in six months?" Lighthouse content ages well. Trendy content doesn't. If the answer is yes, post it. If not, it needs more thought.</p>
             <div class="score-bar"><div class="score-fill" style="width:96%"></div></div>
@@ -1071,7 +1075,7 @@
     <!-- Pillar Rotation Guide -->
     <div class="card">
         <div class="card-header"><h3>Pillar Rotation Strategy</h3><span class="card-badge badge-gold">Monthly Rhythm</span></div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;">
+        <div class="rotation-grid">
             <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
                 <div style="font-size:12px;font-weight:600;color:var(--navy);">Week 1</div>
                 <div style="font-size:13px;color:var(--gray-700);margin-top:4px;">The Educated Operator<br><em>or</em> Restaurant School</div>
