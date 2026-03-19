@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkedIn Authority Dashboard — Efrem Yates</title>
+    <!-- File parsing libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <style>
         :root {
             --navy: #1B3A5C;
@@ -388,6 +392,140 @@
         .legend-dot {
             width: 10px; height: 10px; border-radius: 2px;
         }
+
+        /* ══ Upload / Dropzone ══ */
+        .upload-zone {
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius);
+            padding: 40px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--white);
+            position: relative;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--gold);
+            background: #FFFDF8;
+            box-shadow: var(--shadow-md);
+        }
+        .upload-zone.drag-over {
+            border-color: var(--gold);
+            background: var(--gold-light);
+            transform: scale(1.005);
+        }
+        .upload-zone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2;
+        }
+        .upload-icon {
+            width: 56px; height: 56px;
+            background: linear-gradient(135deg, var(--navy), #2D5A8E);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .upload-icon svg { width: 24px; height: 24px; }
+        .upload-zone h3 { font-size: 17px; color: var(--navy); margin-bottom: 6px; }
+        .upload-zone p { font-size: 13px; color: var(--gray-500); margin-bottom: 14px; }
+        .upload-filetypes {
+            display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+        }
+        .upload-filetypes span {
+            font-size: 11px; font-weight: 600; padding: 4px 12px;
+            border-radius: 6px; background: var(--gray-100); color: var(--gray-700);
+            letter-spacing: 0.3px;
+        }
+        .upload-btn-label {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 12px 28px;
+            background: var(--gold);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: background 0.2s;
+            pointer-events: none;
+        }
+        .upload-zone:hover .upload-btn-label { background: #C08530; }
+
+        /* ── Loading overlay ── */
+        .analysis-loading {
+            display: none;
+            text-align: center;
+            padding: 60px 32px;
+            background: var(--white);
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow);
+        }
+        .analysis-loading.active { display: block; }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid var(--gray-200);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 15px; color: var(--navy); font-weight: 600; margin-bottom: 6px; }
+        .loading-sub { font-size: 13px; color: var(--gray-500); }
+        .progress-bar-wrap {
+            width: 280px; height: 6px;
+            background: var(--gray-100);
+            border-radius: 3px;
+            margin: 16px auto 0;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--gold), var(--navy));
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        /* ── Analysis Results ── */
+        #analysis-results { display: none; }
+        #analysis-results.active { display: block; animation: fadeIn 0.4s ease; }
+
+        .analysis-header-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--navy), #2D5A8E);
+            border-radius: var(--radius);
+            color: var(--white);
+            margin-bottom: 20px;
+        }
+        .analysis-header-bar h3 { font-size: 16px; }
+        .analysis-header-bar .meta { font-size: 12px; color: var(--gold); }
+
+        /* ── Collapsible section ── */
+        .collapsible-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+        .collapsible-header:hover { background: var(--gray-100); }
+        .collapsible-header h3 { font-size: 15px; color: var(--navy); }
+        .collapsible-header .toggle-icon {
+            font-size: 18px; color: var(--gold); transition: transform 0.3s;
+        }
+        .collapsible-header.open .toggle-icon { transform: rotate(180deg); }
+        .collapsible-body {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+            padding: 0 0;
+        }
+        .collapsible-body.open {
+            max-height: 3000px;
+            padding: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -607,135 +745,218 @@
 </div>
 
 <!-- ════════════════════════════════════════════════ -->
-<!-- TAB 2: POST ANATOMY                              -->
+<!-- TAB 2: POST ANATOMY (with upload + analysis)     -->
 <!-- ════════════════════════════════════════════════ -->
 <div class="tab-content" id="tab-anatomy">
 
+    <!-- ── Upload Zone ── -->
     <div class="section-header">
-        <h2>Anatomy of a High-Performing Post</h2>
-        <p>Deconstructing Gavin Jordan's viral finance post (108 reactions, 39 comments, 19 reposts)</p>
+        <h2>Post Deconstruction Lab</h2>
+        <p>Upload any high-performing LinkedIn post to deconstruct it and extract patterns for your brand</p>
     </div>
 
-    <div class="grid-2 mb-24">
-        <!-- Left: Annotated Post -->
-        <div class="card">
-            <div class="card-header">
-                <h3>The Post — Annotated</h3>
-                <span class="card-badge badge-gold">108 Reactions</span>
-            </div>
-            <div style="margin-bottom:12px;">
-                <span class="legend-item"><span class="legend-dot" style="background:var(--gold);"></span> Hook</span>
-                <span class="legend-item"><span class="legend-dot" style="background:var(--blue);"></span> Story</span>
-                <span class="legend-item"><span class="legend-dot" style="background:#8B5CF6;"></span> Tension</span>
-                <span class="legend-item"><span class="legend-dot" style="background:var(--green);"></span> Rhythm & Repetition</span>
-                <span class="legend-item"><span class="legend-dot" style="background:var(--red);"></span> Close</span>
-            </div>
-            <div class="scroll-section" style="max-height:500px;">
-                <div class="hp-line hook-line"><strong>Finance isn't buried because it's bad at its job. It's buried because it's too good at everyone else's.</strong></div>
-                <div class="hp-line story-line">I said something in a leadership meeting once that made the room go silent.</div>
-                <div class="hp-line story-line">A department head spent twenty minutes explaining why their team's errors kept landing in finance's lap. System issues. Staff turnover. Process gaps. Twenty minutes of reasons why finance should keep cleaning up their mess.</div>
-                <div class="hp-line story-line">I let them finish. Then I said it.</div>
-                <div class="hp-line tension-line"><strong>Your inability to manage your own function is not finance's problem to solve.</strong></div>
-                <div class="hp-line story-line">The silence was uncomfortable. Good.</div>
-                <div class="hp-line rhythm-line">Finance had been cleaning up that department's failures for so long that saying no felt like breaking the rules.</div>
-                <div class="hp-line rhythm-line">And it wasn't just them. It never is.</div>
-                <div class="hp-line rhythm-line">A decision gets made without checking the numbers. <strong>Finance finds out when it hits the accounts.</strong> A process breaks down in operations. <strong>Finance is reconciling the fallout.</strong> A project runs over budget because nobody was tracking it. <strong>Finance inherits the wreckage.</strong></div>
-                <div class="hp-line tension-line">Other teams have quietly learned they don't need to be rigorous. Because finance will catch it. Finance always catches it.</div>
-                <div class="hp-line tension-line">So they get sloppy. And finance gets busier. And then those same teams sit in the same meetings wondering why finance isn't more strategic.</div>
-                <div class="hp-line close-line"><strong>The most dangerous thing finance ever did was make being a dumping ground look effortless.</strong></div>
-                <div class="hp-line close-line">What is your finance team carrying right now that belongs to someone else?</div>
-            </div>
+    <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.pdf,.docx">
+        <div class="upload-icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
         </div>
+        <h3>Upload a LinkedIn Post to Deconstruct</h3>
+        <p>Drag and drop a screenshot, PDF, or document — or click to browse</p>
+        <div class="upload-filetypes">
+            <span>.PNG / .JPG</span>
+            <span>.PDF</span>
+            <span>.DOCX</span>
+        </div>
+        <div class="upload-btn-label">Choose File</div>
+    </div>
 
-        <!-- Right: Pattern Analysis -->
-        <div class="card">
-            <div class="card-header">
-                <h3>Why This Post Worked</h3>
-                <span class="card-badge badge-green">Pattern Analysis</span>
-            </div>
-
-            <div class="anatomy-section anatomy-hook">
-                <h5>1. Contrarian Hook (Line 1)</h5>
-                <p>Flips an assumption: finance isn't underperforming, it's <em>overperforming for others</em>. Creates instant cognitive tension — the reader has to reconcile this.</p>
-            </div>
-            <div class="anatomy-section anatomy-story">
-                <h5>2. Cinematic Moment</h5>
-                <p>"I let them finish. Then I said it." — This is screenplay pacing. Short. Deliberate. Builds anticipation before the punchline. The reader is IN the room.</p>
-            </div>
-            <div class="anatomy-section anatomy-tension">
-                <h5>3. Bold Statement as Turning Point</h5>
-                <p>"Your inability to manage your own function is not finance's problem to solve." — This is the line people screenshot and share. Specific, confrontational, undeniably true for the audience.</p>
-            </div>
-            <div class="anatomy-section anatomy-takeaway" style="border-left-color:var(--green);">
-                <h5>4. Repetition as Rhythm Engine</h5>
-                <p>"Finance finds out... Finance is reconciling... Finance inherits..." — Parallel structure builds momentum. Each repetition hammers the thesis deeper. The reader nods harder each time.</p>
-            </div>
-            <div class="anatomy-section" style="border-left-color:#8B5CF6;background:#F5F3FF;">
-                <h5>5. The Inversion</h5>
-                <p>"Those same teams sit in the same meetings wondering why finance isn't more strategic." — This is the killer irony. The very people causing the problem are questioning the victims of it.</p>
-            </div>
-            <div class="anatomy-section anatomy-hook">
-                <h5>6. Quotable Close + Open Question</h5>
-                <p>The closing line is shareable on its own. The question invites personal reflection without being engagement bait — because the post already earned the right to ask.</p>
-            </div>
+    <!-- Loading State -->
+    <div class="analysis-loading" id="analysis-loading">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Extracting text from file...</div>
+        <div class="loading-sub" id="loading-sub">This may take a moment for images</div>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progress-fill"></div>
         </div>
     </div>
 
-    <!-- Your Template -->
-    <div class="section-header"><h2>Your Lighthouse Post Template</h2><p>The structure behind every strong post</p></div>
-    <div class="card mb-24">
-        <div class="template-step">
-            <div class="step-num">1</div>
-            <div class="step-content">
-                <h4>Open with a Specific Truth (1-2 lines)</h4>
-                <p>Not a hook. Not a question designed to grab attention. A sentence that is just <em>true</em>, and specific enough that the right person immediately recognizes it. The goal is resonance, not reach.</p>
-                <div style="margin-top:8px;padding:10px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-700);font-style:italic;">
-                    Example: "Running a restaurant with no idea how to read a P&L is like driving with a map you can't interpret."
+    <!-- ── Dynamic Analysis Results ── -->
+    <div id="analysis-results">
+        <div class="analysis-header-bar">
+            <div>
+                <h3 id="analysis-title">Post Analysis</h3>
+                <div class="meta" id="analysis-meta"></div>
+            </div>
+            <button class="btn" style="background:var(--gold);color:white;" onclick="resetAnalysis()">Analyze Another Post</button>
+        </div>
+
+        <div class="grid-2 mb-24">
+            <!-- Left: Annotated Post -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>The Post — Annotated</h3>
+                    <span class="card-badge badge-gold" id="result-badge">Analyzed</span>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--gold);"></span> Hook</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--blue);"></span> Story</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#8B5CF6;"></span> Tension</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--green);"></span> Rhythm & Repetition</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--red);"></span> Close</span>
+                </div>
+                <div class="scroll-section" style="max-height:500px;" id="annotated-post"></div>
+            </div>
+
+            <!-- Right: Pattern Analysis -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Why This Post Works</h3>
+                    <span class="card-badge badge-green">Pattern Analysis</span>
+                </div>
+                <div id="pattern-analysis" class="scroll-section" style="max-height:500px;"></div>
+            </div>
+        </div>
+
+        <!-- Brand Adaptation for analyzed post -->
+        <div class="section-header"><h2>Adapting This Post for Your Brand</h2></div>
+        <div class="grid-2 mb-24">
+            <div class="card featured">
+                <div class="card-header"><h3 id="their-pattern-title">Their Pattern</h3></div>
+                <div id="their-pattern" style="font-size:13px;color:var(--gray-700);"></div>
+            </div>
+            <div class="card featured">
+                <div class="card-header"><h3>Your Pattern (Educated Operator)</h3></div>
+                <div id="your-adaptation" style="font-size:13px;color:var(--gray-700);"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ Reference: Gavin Jordan's Analysis ══ -->
+    <div style="margin-top:32px;">
+        <div class="collapsible-header" id="gavin-toggle" onclick="toggleCollapsible('gavin')">
+            <h3>Reference: Gavin Jordan's Viral Post (108 reactions, 39 comments, 19 reposts)</h3>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="collapsible-body" id="gavin-body">
+            <div class="grid-2 mb-24">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>The Post — Annotated</h3>
+                        <span class="card-badge badge-gold">108 Reactions</span>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span class="legend-item"><span class="legend-dot" style="background:var(--gold);"></span> Hook</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:var(--blue);"></span> Story</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#8B5CF6;"></span> Tension</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:var(--green);"></span> Rhythm & Repetition</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:var(--red);"></span> Close</span>
+                    </div>
+                    <div class="scroll-section" style="max-height:500px;">
+                        <div class="hp-line hook-line"><strong>Finance isn't buried because it's bad at its job. It's buried because it's too good at everyone else's.</strong></div>
+                        <div class="hp-line story-line">I said something in a leadership meeting once that made the room go silent.</div>
+                        <div class="hp-line story-line">A department head spent twenty minutes explaining why their team's errors kept landing in finance's lap. System issues. Staff turnover. Process gaps. Twenty minutes of reasons why finance should keep cleaning up their mess.</div>
+                        <div class="hp-line story-line">I let them finish. Then I said it.</div>
+                        <div class="hp-line tension-line"><strong>Your inability to manage your own function is not finance's problem to solve.</strong></div>
+                        <div class="hp-line story-line">The silence was uncomfortable. Good.</div>
+                        <div class="hp-line rhythm-line">Finance had been cleaning up that department's failures for so long that saying no felt like breaking the rules.</div>
+                        <div class="hp-line rhythm-line">And it wasn't just them. It never is.</div>
+                        <div class="hp-line rhythm-line">A decision gets made without checking the numbers. <strong>Finance finds out when it hits the accounts.</strong> A process breaks down in operations. <strong>Finance is reconciling the fallout.</strong> A project runs over budget because nobody was tracking it. <strong>Finance inherits the wreckage.</strong></div>
+                        <div class="hp-line tension-line">Other teams have quietly learned they don't need to be rigorous. Because finance will catch it. Finance always catches it.</div>
+                        <div class="hp-line tension-line">So they get sloppy. And finance gets busier. And then those same teams sit in the same meetings wondering why finance isn't more strategic.</div>
+                        <div class="hp-line close-line"><strong>The most dangerous thing finance ever did was make being a dumping ground look effortless.</strong></div>
+                        <div class="hp-line close-line">What is your finance team carrying right now that belongs to someone else?</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Why This Post Worked</h3>
+                        <span class="card-badge badge-green">Pattern Analysis</span>
+                    </div>
+                    <div class="anatomy-section anatomy-hook">
+                        <h5>1. Contrarian Hook (Line 1)</h5>
+                        <p>Flips an assumption: finance isn't underperforming, it's <em>overperforming for others</em>. Creates instant cognitive tension — the reader has to reconcile this.</p>
+                    </div>
+                    <div class="anatomy-section anatomy-story">
+                        <h5>2. Cinematic Moment</h5>
+                        <p>"I let them finish. Then I said it." — This is screenplay pacing. Short. Deliberate. Builds anticipation before the punchline. The reader is IN the room.</p>
+                    </div>
+                    <div class="anatomy-section anatomy-tension">
+                        <h5>3. Bold Statement as Turning Point</h5>
+                        <p>"Your inability to manage your own function is not finance's problem to solve." — This is the line people screenshot and share. Specific, confrontational, undeniably true for the audience.</p>
+                    </div>
+                    <div class="anatomy-section anatomy-takeaway" style="border-left-color:var(--green);">
+                        <h5>4. Repetition as Rhythm Engine</h5>
+                        <p>"Finance finds out... Finance is reconciling... Finance inherits..." — Parallel structure builds momentum. Each repetition hammers the thesis deeper. The reader nods harder each time.</p>
+                    </div>
+                    <div class="anatomy-section" style="border-left-color:#8B5CF6;background:#F5F3FF;">
+                        <h5>5. The Inversion</h5>
+                        <p>"Those same teams sit in the same meetings wondering why finance isn't more strategic." — This is the killer irony. The very people causing the problem are questioning the victims of it.</p>
+                    </div>
+                    <div class="anatomy-section anatomy-hook">
+                        <h5>6. Quotable Close + Open Question</h5>
+                        <p>The closing line is shareable on its own. The question invites personal reflection without being engagement bait — because the post already earned the right to ask.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card featured">
+                    <div class="card-header"><h3>Gavin's Pattern (CFO Authority)</h3></div>
+                    <div style="font-size:13px;color:var(--gray-700);">
+                        <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking DOWN from expertise</p>
+                        <p style="margin-bottom:8px;"><strong>Tone:</strong> Confrontational, authoritative, decisive</p>
+                        <p style="margin-bottom:8px;"><strong>Power move:</strong> "I said this bold thing in a meeting"</p>
+                        <p><strong>Audience contract:</strong> "I've been there, I know the answer"</p>
+                    </div>
+                </div>
+                <div class="card featured">
+                    <div class="card-header"><h3>Your Pattern (Educated Operator)</h3></div>
+                    <div style="font-size:13px;color:var(--gray-700);">
+                        <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking ACROSS from recognition</p>
+                        <p style="margin-bottom:8px;"><strong>Tone:</strong> Honest, self-aware, warm, specific</p>
+                        <p style="margin-bottom:8px;"><strong>Power move:</strong> "I made this mistake. Here's what I now understand about why."</p>
+                        <p><strong>Audience contract:</strong> "I've been where you are, I'm learning the answer, and I'm showing my work"</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="template-step">
-            <div class="step-num">2</div>
-            <div class="step-content">
-                <h4>Short Story or Moment (3-6 lines)</h4>
-                <p>One real situation. Keep it tight. What happened, what you thought at the time, and what you understand now. No need to dramatize — the specificity does the work.</p>
-            </div>
-        </div>
-        <div class="template-step">
-            <div class="step-num">3</div>
-            <div class="step-content">
-                <h4>The Applicable Takeaway (2-3 lines)</h4>
-                <p>What does this mean for someone else? Not advice — more like a mirror. "If you've ever [X], then [Y] might feel familiar." Or simply: "Here's the thing I'd do differently."</p>
-            </div>
-        </div>
-        <div class="template-step">
-            <div class="step-num">4</div>
-            <div class="step-content">
-                <h4>Close with a Thought or Question (1 line)</h4>
-                <p>Optional. A strong final sentence that doesn't ask anything is better than a hollow question. Only ask when it's genuine and earned by the post.</p>
-            </div>
-        </div>
     </div>
 
-    <!-- Efrem's Adaptation -->
-    <div class="section-header"><h2>Adapting This Pattern for Your Brand</h2></div>
-    <div class="grid-2">
-        <div class="card featured">
-            <div class="card-header"><h3>Gavin's Pattern (CFO Authority)</h3></div>
-            <div style="font-size:13px;color:var(--gray-700);">
-                <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking DOWN from expertise</p>
-                <p style="margin-bottom:8px;"><strong>Tone:</strong> Confrontational, authoritative, decisive</p>
-                <p style="margin-bottom:8px;"><strong>Power move:</strong> "I said this bold thing in a meeting"</p>
-                <p><strong>Audience contract:</strong> "I've been there, I know the answer"</p>
+    <!-- ── Your Lighthouse Post Template ── -->
+    <div style="margin-top:32px;">
+        <div class="section-header"><h2>Your Lighthouse Post Template</h2><p>The structure behind every strong post</p></div>
+        <div class="card mb-24">
+            <div class="template-step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <h4>Open with a Specific Truth (1-2 lines)</h4>
+                    <p>Not a hook. Not a question designed to grab attention. A sentence that is just <em>true</em>, and specific enough that the right person immediately recognizes it. The goal is resonance, not reach.</p>
+                    <div style="margin-top:8px;padding:10px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-700);font-style:italic;">
+                        Example: "Running a restaurant with no idea how to read a P&L is like driving with a map you can't interpret."
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="card featured">
-            <div class="card-header"><h3>Your Pattern (Educated Operator)</h3></div>
-            <div style="font-size:13px;color:var(--gray-700);">
-                <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking ACROSS from recognition</p>
-                <p style="margin-bottom:8px;"><strong>Tone:</strong> Honest, self-aware, warm, specific</p>
-                <p style="margin-bottom:8px;"><strong>Power move:</strong> "I made this mistake. Here's what I now understand about why."</p>
-                <p><strong>Audience contract:</strong> "I've been where you are, I'm learning the answer, and I'm showing my work"</p>
+            <div class="template-step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <h4>Short Story or Moment (3-6 lines)</h4>
+                    <p>One real situation. Keep it tight. What happened, what you thought at the time, and what you understand now. No need to dramatize — the specificity does the work.</p>
+                </div>
+            </div>
+            <div class="template-step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <h4>The Applicable Takeaway (2-3 lines)</h4>
+                    <p>What does this mean for someone else? Not advice — more like a mirror. "If you've ever [X], then [Y] might feel familiar." Or simply: "Here's the thing I'd do differently."</p>
+                </div>
+            </div>
+            <div class="template-step">
+                <div class="step-num">4</div>
+                <div class="step-content">
+                    <h4>Close with a Thought or Question (1 line)</h4>
+                    <p>Optional. A strong final sentence that doesn't ask anything is better than a hollow question. Only ask when it's genuine and earned by the post.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -1140,7 +1361,16 @@ Remember the template:
 </div><!-- end .container -->
 
 <script>
-// ── Tab Navigation ──
+// ═══════════════════════════════════════════════════
+//  PDF.js worker setup
+// ═══════════════════════════════════════════════════
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ═══════════════════════════════════════════════════
+//  Tab Navigation
+// ═══════════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1150,7 +1380,492 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     });
 });
 
-// ── Checklist Toggle ──
+// ═══════════════════════════════════════════════════
+//  Collapsible sections
+// ═══════════════════════════════════════════════════
+function toggleCollapsible(id) {
+    const header = document.getElementById(id + '-toggle');
+    const body = document.getElementById(id + '-body');
+    header.classList.toggle('open');
+    body.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════
+//  Upload / Drag-and-Drop
+// ═══════════════════════════════════════════════════
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+
+['dragenter','dragover'].forEach(e => {
+    uploadZone.addEventListener(e, ev => { ev.preventDefault(); uploadZone.classList.add('drag-over'); });
+});
+['dragleave','drop'].forEach(e => {
+    uploadZone.addEventListener(e, ev => { ev.preventDefault(); uploadZone.classList.remove('drag-over'); });
+});
+uploadZone.addEventListener('drop', ev => {
+    const file = ev.dataTransfer.files[0];
+    if (file) handleFile(file);
+});
+fileInput.addEventListener('change', ev => {
+    const file = ev.target.files[0];
+    if (file) handleFile(file);
+});
+
+// ═══════════════════════════════════════════════════
+//  File Handling & Text Extraction
+// ═══════════════════════════════════════════════════
+async function handleFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    showLoading('Extracting text from ' + file.name + '...');
+
+    try {
+        let text = '';
+        if (ext === 'pdf') {
+            text = await extractPDF(file);
+        } else if (ext === 'docx') {
+            text = await extractDOCX(file);
+        } else if (['png','jpg','jpeg'].includes(ext)) {
+            text = await extractImage(file);
+        } else {
+            throw new Error('Unsupported file type: .' + ext);
+        }
+
+        if (!text || text.trim().length < 20) {
+            throw new Error('Could not extract enough text. Try pasting the post text directly or use a clearer screenshot.');
+        }
+
+        updateProgress(80, 'Analyzing post structure...');
+        await new Promise(r => setTimeout(r, 400));
+        updateProgress(100, 'Building deconstruction...');
+        await new Promise(r => setTimeout(r, 300));
+
+        const cleaned = cleanExtractedText(text);
+        runAnalysis(cleaned, file.name);
+
+    } catch (err) {
+        hideLoading();
+        alert('Error: ' + err.message);
+    }
+}
+
+async function extractPDF(file) {
+    updateProgress(20, 'Reading PDF pages...');
+    const arrayBuf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        fullText += content.items.map(item => item.str).join(' ') + '\n';
+        updateProgress(20 + Math.round((i / pdf.numPages) * 40));
+    }
+    return fullText;
+}
+
+async function extractDOCX(file) {
+    updateProgress(30, 'Parsing document...');
+    const arrayBuf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuf });
+    updateProgress(60);
+    return result.value;
+}
+
+async function extractImage(file) {
+    updateProgress(10, 'Starting OCR — this may take 15-30 seconds...');
+    const result = await Tesseract.recognize(file, 'eng', {
+        logger: m => {
+            if (m.status === 'recognizing text') {
+                updateProgress(10 + Math.round(m.progress * 60), 'Reading text from image...');
+            }
+        }
+    });
+    return result.data.text;
+}
+
+function cleanExtractedText(raw) {
+    // Remove LinkedIn UI artifacts, hashtags at end, extra whitespace
+    let text = raw
+        .replace(/^(Suggested|Promoted|\d+\s*(comments?|reposts?|reactions?|likes?)).*$/gim, '')
+        .replace(/^(Like|Comment|Repost|Send|Follow|\+\s*Follow|Share)$/gim, '')
+        .replace(/^\s*[•·]\s*\d+(rd|st|nd|th)\+?\s*$/gim, '')
+        .replace(/^\d+[dh]\s*[•·]?\s*[🌐🔵⚡]?\s*$/gim, '')
+        .replace(/^\s*#\w+(\s+#\w+)*\s*$/gim, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    // Try to find the actual post content (skip author name / title lines)
+    const lines = text.split('\n').filter(l => l.trim());
+    // Skip lines that look like author/title metadata
+    let startIdx = 0;
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+        const l = lines[i].trim();
+        if (l.length < 60 && (/^[A-Z][a-z]+ [A-Z]/.test(l) || /\b(CEO|CFO|COO|CPA|MBA|MSc|PhD|Director|Manager|Founder|VP|President)\b/i.test(l) || /\b(university|school|inc\.|llc|ltd)\b/i.test(l))) {
+            startIdx = i + 1;
+        } else break;
+    }
+    return lines.slice(startIdx).join('\n').trim();
+}
+
+// ═══════════════════════════════════════════════════
+//  Loading UI
+// ═══════════════════════════════════════════════════
+function showLoading(msg) {
+    uploadZone.style.display = 'none';
+    const loader = document.getElementById('analysis-loading');
+    loader.classList.add('active');
+    document.getElementById('loading-text').textContent = msg || 'Processing...';
+    document.getElementById('progress-fill').style.width = '5%';
+}
+function updateProgress(pct, msg) {
+    document.getElementById('progress-fill').style.width = pct + '%';
+    if (msg) document.getElementById('loading-text').textContent = msg;
+}
+function hideLoading() {
+    document.getElementById('analysis-loading').classList.remove('active');
+    uploadZone.style.display = '';
+}
+
+function resetAnalysis() {
+    document.getElementById('analysis-results').classList.remove('active');
+    uploadZone.style.display = '';
+    fileInput.value = '';
+}
+
+// ═══════════════════════════════════════════════════
+//  POST ANALYSIS ENGINE
+// ═══════════════════════════════════════════════════
+function runAnalysis(text, filename) {
+    document.getElementById('analysis-loading').classList.remove('active');
+
+    const lines = text.split('\n').filter(l => l.trim());
+    const words = text.split(/\s+/).length;
+
+    // Classify each line
+    const classified = classifyLines(lines);
+
+    // Detect patterns
+    const patterns = detectPatterns(lines, classified, text);
+
+    // Render annotated post
+    renderAnnotatedPost(lines, classified);
+
+    // Render pattern analysis
+    renderPatternAnalysis(patterns);
+
+    // Render brand adaptation
+    renderBrandAdaptation(patterns, text);
+
+    // Header
+    document.getElementById('analysis-title').textContent = 'Post Deconstruction';
+    document.getElementById('analysis-meta').textContent = words + ' words · ' + lines.length + ' lines · from ' + filename;
+    document.getElementById('result-badge').textContent = words + ' Words';
+
+    // Show results
+    document.getElementById('analysis-results').classList.add('active');
+    document.getElementById('analysis-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function classifyLines(lines) {
+    const total = lines.length;
+    return lines.map((line, i) => {
+        const t = line.trim();
+        const w = t.split(/\s+/).length;
+        const isFirst = i === 0;
+        const isSecond = i === 1;
+        const isLast = i === total - 1;
+        const isSecondLast = i === total - 2;
+
+        // Hook: first 1-2 lines
+        if (isFirst) return 'hook';
+        if (isSecond && total > 8 && w <= 15) return 'hook';
+
+        // Close: last 1-2 lines
+        if (isLast) return 'close';
+        if (isSecondLast && total > 6 && (t.endsWith('.') || t.endsWith('"')) && w < 20) return 'close';
+
+        // Tension: short punchy lines, confrontational pivots, bold statements
+        if (w <= 6 && w >= 2 && i > 1 && i < total - 2) return 'tension';
+        if (/^(but |and yet |the (truth|reality|problem|hard part|thing) (is|was)|what (nobody|no one|I didn't)|here's (what|the thing))/i.test(t) && w < 25) return 'tension';
+
+        // Detect repetition / parallel structure
+        const firstThreeWords = t.split(/\s+/).slice(0, 3).join(' ').toLowerCase();
+        const neighbors = lines.filter((l, j) => j !== i && Math.abs(j - i) <= 3 && l.trim().toLowerCase().startsWith(firstThreeWords.split(' ')[0]));
+        if (neighbors.length >= 2 && i > 2) return 'rhythm';
+
+        // Check for anaphora-style repetition
+        const sentencesInLine = t.split(/\.\s+/).filter(s => s.trim());
+        if (sentencesInLine.length >= 3) {
+            const starts = sentencesInLine.map(s => s.trim().split(/\s+/)[0].toLowerCase());
+            const mostCommon = starts.sort((a,b) => starts.filter(v=>v===b).length - starts.filter(v=>v===a).length)[0];
+            if (starts.filter(s => s === mostCommon).length >= 2) return 'rhythm';
+        }
+
+        // Story: first-person narrative
+        if (/\bI\b.{0,30}\b(was|did|said|thought|felt|knew|made|ran|hired|worked|realized|learned|started|spent|let|looked|saw|had|told|asked|noticed|decided|tried|wanted|remember|walked)\b/i.test(t)) return 'story';
+        if (/\b(one day|that (day|night|moment|week|month)|years ago|months ago|back then|at the time|in (my|the) (meeting|office|kitchen|restaurant|room|business))\b/i.test(t)) return 'story';
+        if (/\bI\b/i.test(t) && w > 8) return 'story';
+
+        // Tension: contrast & pivot language
+        if (/\b(but|however|yet|instead|the irony|meanwhile|what I didn't realize|what changed|turns out|except)\b/i.test(t) && w >= 8) return 'tension';
+
+        // Default to rhythm for everything else (connective tissue)
+        return 'rhythm';
+    });
+}
+
+function detectPatterns(lines, classified, fullText) {
+    const patterns = [];
+    const total = lines.length;
+    const words = fullText.split(/\s+/).length;
+    const hookLine = lines[0].trim();
+    const lastLine = lines[total - 1].trim();
+
+    // 1. Analyze the hook
+    const hookType = analyzeHook(hookLine);
+    patterns.push({
+        type: 'hook',
+        title: hookType.title,
+        explanation: hookType.explanation,
+        quote: hookLine.length < 200 ? hookLine : hookLine.substring(0, 200) + '...'
+    });
+
+    // 2. Look for cinematic/dramatic moments
+    const dramaticLines = lines.filter((l, i) => {
+        const w = l.trim().split(/\s+/).length;
+        return w <= 8 && w >= 2 && i > 0 && i < total - 1 && classified[i] === 'tension';
+    });
+    if (dramaticLines.length > 0) {
+        patterns.push({
+            type: 'story',
+            title: 'Dramatic Pacing',
+            explanation: 'Short, punchy lines like "' + dramaticLines[0].trim() + '" create cinematic tension. These micro-moments make the reader pause — the brevity signals importance. This is screenplay-level craft applied to LinkedIn.',
+            quote: dramaticLines[0].trim()
+        });
+    }
+
+    // 3. Look for a bold thesis / turning point
+    const boldCandidates = lines.filter((l, i) => {
+        const w = l.trim().split(/\s+/).length;
+        return i > 0 && i < total - 1 && w >= 6 && w <= 25 && (classified[i] === 'tension') && !/^(but|and|or|so|the|if|when)/i.test(l.trim());
+    });
+    if (boldCandidates.length > 0) {
+        const boldLine = boldCandidates[0].trim();
+        patterns.push({
+            type: 'tension',
+            title: 'Bold Statement / Turning Point',
+            explanation: 'This is the line people screenshot and share: "' + (boldLine.length < 120 ? boldLine : boldLine.substring(0, 120) + '...') + '" — It\'s specific enough to feel true and confrontational enough to feel brave. The post pivots around this moment.',
+            quote: boldLine
+        });
+    }
+
+    // 4. Look for repetition / parallel structure
+    const rhythmLines = classified.filter(c => c === 'rhythm').length;
+    if (rhythmLines >= 3) {
+        // Find the actual repeated structure
+        const storyAndRhythm = lines.filter((l, i) => classified[i] === 'rhythm');
+        patterns.push({
+            type: 'rhythm',
+            title: 'Repetition & Rhythm Engine',
+            explanation: 'The post uses parallel structure and repetition to build momentum. When multiple sentences follow the same pattern, each one hammers the thesis deeper. The reader nods harder each time — this is how conviction is manufactured in prose.',
+            quote: storyAndRhythm[0] ? storyAndRhythm[0].trim() : ''
+        });
+    }
+
+    // 5. Look for irony / inversion
+    if (/\b(wondering why|the (same|very) (people|teams?|ones?)|irony|ironic|the ones who)\b/i.test(fullText)) {
+        patterns.push({
+            type: 'inversion',
+            title: 'The Inversion',
+            explanation: 'The post contains an ironic reversal — the very people contributing to the problem are questioning those dealing with its consequences. This kind of structural irony creates a powerful "aha" moment. Readers feel seen.',
+            quote: ''
+        });
+    }
+
+    // 6. Analyze the close
+    const closeType = analyzeClose(lastLine, lines.length > 1 ? lines[total - 2].trim() : '');
+    patterns.push({
+        type: 'close',
+        title: closeType.title,
+        explanation: closeType.explanation,
+        quote: lastLine
+    });
+
+    // 7. Tone analysis
+    const toneResult = analyzeTone(fullText, lines);
+    patterns.push({
+        type: 'tone',
+        title: 'Overall Tone: ' + toneResult.label,
+        explanation: toneResult.explanation,
+        quote: ''
+    });
+
+    return patterns;
+}
+
+function analyzeHook(line) {
+    const l = line.toLowerCase();
+    if (/\bnot\b.*\b(because|it's)\b|\bisn't\b.*\bit's\b|\bwasn't\b.*\bit was\b/i.test(line)) {
+        return { title: 'Contrarian Hook', explanation: 'The opening flips a common assumption. "Not X — actually Y" creates instant cognitive tension. The reader has to stop and reconcile what they believed with this new framing. This is the highest-performing hook type on LinkedIn.' };
+    }
+    if (line.endsWith('?')) {
+        return { title: 'Question Hook', explanation: 'Opens with a question that the target audience is already asking themselves. When done well, this creates instant identification — the reader feels like the post was written for them.' };
+    }
+    if (/\bI\b/.test(line) && /\b(learned|realized|made|did|was|used to|thought|never|always)\b/i.test(line)) {
+        return { title: 'Personal Confession Hook', explanation: 'Leads with a first-person admission or realization. This immediately builds trust and signals vulnerability — the reader leans in because honesty is rare on LinkedIn.' };
+    }
+    if (line.split(/\s+/).length <= 12) {
+        return { title: 'Bold Declaration Hook', explanation: 'A short, punchy statement that reads like a thesis. No hedging, no qualifiers — just a clear claim. This forces the reader to either agree or keep reading to disagree.' };
+    }
+    return { title: 'Narrative Hook', explanation: 'The opening draws the reader into a story or sets up a situation. This works because humans are wired for narrative — we want to know what happens next.' };
+}
+
+function analyzeClose(lastLine, secondLastLine) {
+    if (lastLine.endsWith('?')) {
+        return { title: 'Open Question Close', explanation: 'Ends with a question that invites personal reflection. This drives comments because people want to share their own answer. The key: the post earned the right to ask by providing value first — this isn\'t engagement bait, it\'s earned engagement.' };
+    }
+    if (lastLine.split(/\s+/).length <= 12 && !lastLine.endsWith('?')) {
+        return { title: 'Quotable Mic-Drop Close', explanation: 'The final line is short, punchy, and shareable on its own. This is the line people paste into their notes or share as a screenshot. A great closing line is the post\'s afterimage — it lingers.' };
+    }
+    return { title: 'Reflective Close', explanation: 'The post ends with a grounded reflection rather than a question or punchline. This feels authentic and complete — like the writer sat with the thought before sharing it.' };
+}
+
+function analyzeTone(text, lines) {
+    const iCount = (text.match(/\bI\b/g) || []).length;
+    const youCount = (text.match(/\byou\b|\byour\b/gi) || []).length;
+    const words = text.split(/\s+/).length;
+    const questionCount = lines.filter(l => l.trim().endsWith('?')).length;
+    const shortLineRatio = lines.filter(l => l.trim().split(/\s+/).length <= 8).length / lines.length;
+
+    if (iCount > youCount * 2 && iCount > 5) {
+        return { label: 'Confessional / Reflective', explanation: 'Heavy first-person voice. The author shares from personal experience, creating intimacy and trust. This maps directly to your Lighthouse approach — sharing what you lived and what you learned.' };
+    }
+    if (youCount > iCount && youCount > 3) {
+        return { label: 'Direct / Authoritative', explanation: 'Speaks directly to the reader. The author positions as someone with answers, using "you/your" to make it feel personal. For your brand, soften this to "If you\'ve ever..." rather than prescriptive "you should."' };
+    }
+    if (shortLineRatio > 0.4) {
+        return { label: 'Punchy / Rhythmic', explanation: 'Lots of short, staccato lines create urgency and momentum. The post reads fast and hits hard. You can adopt this rhythm while keeping your self-aware, learning-focused tone.' };
+    }
+    return { label: 'Balanced / Narrative', explanation: 'Mix of personal reflection and broader observation. This is a strong match for your Educated Operator voice — grounded in story but reaching toward a takeaway that others can use.' };
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDERING
+// ═══════════════════════════════════════════════════
+function renderAnnotatedPost(lines, classified) {
+    const container = document.getElementById('annotated-post');
+    const typeToClass = { hook: 'hook-line', story: 'story-line', tension: 'tension-line', rhythm: 'rhythm-line', close: 'close-line' };
+
+    container.innerHTML = lines.map((line, i) => {
+        const cls = typeToClass[classified[i]] || '';
+        const isBold = classified[i] === 'hook' || classified[i] === 'close' || (classified[i] === 'tension' && line.trim().split(/\s+/).length <= 12);
+        const display = escapeHTML(line.trim());
+        return `<div class="hp-line ${cls}">${isBold ? '<strong>' + display + '</strong>' : display}</div>`;
+    }).join('');
+}
+
+function renderPatternAnalysis(patterns) {
+    const container = document.getElementById('pattern-analysis');
+    const typeToStyle = {
+        hook:      'border-left-color:var(--gold);background:#FFFBF0;',
+        story:     'border-left-color:var(--blue);background:#F0F7FF;',
+        tension:   'border-left-color:var(--red);background:#FFF5F5;',
+        rhythm:    'border-left-color:var(--green);background:#F0FFF4;',
+        inversion: 'border-left-color:#8B5CF6;background:#F5F3FF;',
+        close:     'border-left-color:var(--red);background:#FFF5F5;',
+        tone:      'border-left-color:var(--navy);background:#F0F4F8;'
+    };
+
+    container.innerHTML = patterns.map((p, i) => `
+        <div class="anatomy-section" style="${typeToStyle[p.type] || ''}">
+            <h5>${i + 1}. ${escapeHTML(p.title)}</h5>
+            <p>${escapeHTML(p.explanation)}</p>
+        </div>
+    `).join('');
+}
+
+function renderBrandAdaptation(patterns, text) {
+    // Determine the author's pattern
+    const tone = patterns.find(p => p.type === 'tone');
+    const hook = patterns.find(p => p.type === 'hook');
+    const close = patterns.find(p => p.type === 'close');
+    const iCount = (text.match(/\bI\b/g) || []).length;
+    const words = text.split(/\s+/).length;
+
+    let position, toneLabel, powerMove, contract;
+
+    if (iCount < 3 && /\byou\b/gi.test(text)) {
+        position = 'Speaking TO the audience from expertise';
+        toneLabel = 'Authoritative, prescriptive, direct';
+        powerMove = '"Here is the truth most people won\'t say"';
+        contract = '"I have the answer. Let me tell you."';
+    } else if (iCount > 5) {
+        position = 'Speaking FROM personal experience';
+        toneLabel = 'Confessional, narrative, specific';
+        powerMove = '"I did this / experienced this — here\'s what it taught me"';
+        contract = '"I\'ve been in the arena. Trust my story."';
+    } else {
+        position = 'Balanced authority + narrative';
+        toneLabel = 'Professional, measured, credible';
+        powerMove = '"Here is a pattern I see — illustrated by experience"';
+        contract = '"I understand this space deeply."';
+    }
+
+    document.getElementById('their-pattern-title').textContent = 'Their Pattern';
+    document.getElementById('their-pattern').innerHTML = `
+        <p style="margin-bottom:8px;"><strong>Position:</strong> ${escapeHTML(position)}</p>
+        <p style="margin-bottom:8px;"><strong>Tone:</strong> ${escapeHTML(toneLabel)}</p>
+        <p style="margin-bottom:8px;"><strong>Power move:</strong> ${escapeHTML(powerMove)}</p>
+        <p style="margin-bottom:12px;"><strong>Audience contract:</strong> ${escapeHTML(contract)}</p>
+        <p style="margin-bottom:8px;"><strong>Hook type:</strong> ${escapeHTML(hook ? hook.title : 'N/A')}</p>
+        <p><strong>Close type:</strong> ${escapeHTML(close ? close.title : 'N/A')}</p>
+    `;
+
+    // Your adaptation
+    const relevantPillars = detectRelevantPillars(text);
+    document.getElementById('your-adaptation').innerHTML = `
+        <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking ACROSS from recognition</p>
+        <p style="margin-bottom:8px;"><strong>Tone:</strong> Honest, self-aware, warm, specific</p>
+        <p style="margin-bottom:8px;"><strong>Power move:</strong> "I made this mistake. Here's what I now understand about why."</p>
+        <p style="margin-bottom:12px;"><strong>Audience contract:</strong> "I've been where you are, I'm learning the answer, and I'm showing my work"</p>
+        <p style="margin-bottom:8px;"><strong>Relevant pillars:</strong> ${relevantPillars.map(p => '<span class="pillar-tag">' + escapeHTML(p) + '</span>').join(' ')}</p>
+        <p style="margin-top:12px;padding:12px;background:var(--gold-light);border-radius:8px;font-size:12px;color:var(--navy);"><strong>Adaptation tip:</strong> ${getAdaptationTip(patterns, text)}</p>
+    `;
+}
+
+function detectRelevantPillars(text) {
+    const t = text.toLowerCase();
+    const pillars = [];
+    if (/\b(leader|leadership|manage|team|decision|operator|operations|hiring|staff|employees)\b/.test(t)) pillars.push('The Educated Operator');
+    if (/\b(cpa|exam|study|accounting|credential|coursework|textbook|certification)\b/.test(t)) pillars.push('The CPA Journey');
+    if (/\b(restaurant|kitchen|menu|food cost|labor cost|hospitality|service industry|chef|cook|server)\b/.test(t)) pillars.push('Restaurant School');
+    if (/\b(p&l|profit|revenue|margin|cash flow|balance sheet|financial statement|budget|forecast|roi|accounts|receivable|payable)\b/.test(t)) pillars.push('Business Literacy for Leaders');
+    if (/\b(brand|personal brand|linkedin|posting|content|credibility|sharing|voice|audience)\b/.test(t)) pillars.push('Personal Brand in Practice');
+    if (pillars.length === 0) pillars.push('The Educated Operator', 'Business Literacy for Leaders');
+    return pillars;
+}
+
+function getAdaptationTip(patterns, text) {
+    const hook = patterns.find(p => p.type === 'hook');
+    if (hook && hook.title === 'Contrarian Hook') {
+        return 'This post uses a contrarian flip. Your version: take a common assumption about business ownership or financial literacy and invert it. Example: "The most financially dangerous thing I did as an owner wasn\'t a bad investment. It was not knowing how to read my own P&L."';
+    }
+    if (hook && hook.title === 'Direct / Authoritative') {
+        return 'This post speaks from authority. Your version: replace certainty with earned recognition. Instead of "Here\'s what you should do," try "Here\'s what I wish I\'d known — and what I\'m learning now that changes how I see it."';
+    }
+    if (/\b(I learned|I realized|I made|I was wrong|my mistake)\b/i.test(text)) {
+        return 'This post already uses a confessional style close to yours. Study the specific details — what makes their story land? Match that specificity with your own restaurant/accounting stories.';
+    }
+    return 'Take the structural pattern (hook type, rhythm, close) and fill it with your content: a restaurant moment + an accounting concept you\'re learning + the connection between them. Keep the architecture, change the interior.';
+}
+
+function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════
+//  Checklist Toggle
+// ═══════════════════════════════════════════════════
 function toggleCheck(el) {
     el.classList.toggle('checked');
     const text = el.nextElementSibling;
@@ -1188,7 +1903,9 @@ function updateFilterResult() {
     }
 }
 
-// ── Post Composer ──
+// ═══════════════════════════════════════════════════
+//  Post Composer
+// ═══════════════════════════════════════════════════
 const postText = document.getElementById('post-text');
 postText.addEventListener('input', updateComposerStats);
 
@@ -1220,18 +1937,15 @@ function scorePost() {
     let scores = {};
     let tips = [];
 
-    // Length score
     if (words <= 250) { scores.length = 100; }
     else if (words <= 300) { scores.length = 75; tips.push('Slightly long — try cutting 20-30 words'); }
     else { scores.length = 40; tips.push('Too long. Aim for under 250 words'); }
 
-    // Paragraph structure
     const avgParaWords = words / Math.max(paras.length, 1);
     if (avgParaWords <= 40 && paras.length >= 3) { scores.structure = 95; }
     else if (avgParaWords <= 60) { scores.structure = 70; tips.push('Break into shorter paragraphs (1-3 sentences each)'); }
     else { scores.structure = 40; tips.push('Paragraphs are too long — LinkedIn readers skim first'); }
 
-    // Opening line
     if (firstLine.length > 10 && firstLine.length < 120 && !firstLine.endsWith('?')) {
         scores.hook = 90;
     } else if (firstLine.endsWith('?')) {
@@ -1242,18 +1956,15 @@ function scorePost() {
         tips.push('First line should be a specific truth (1-2 lines) that creates instant resonance');
     }
 
-    // Personal / specific content
     const personalWords = (text.match(/\bI\b|my |me |myself|restaurant|kitchen|team|hired|P&L|margin|cash flow|CPA|accounting|studying/gi) || []).length;
     if (personalWords >= 5) { scores.specificity = 95; }
     else if (personalWords >= 2) { scores.specificity = 70; tips.push('Add more personal/specific details — name real scenarios'); }
     else { scores.specificity = 35; tips.push('This feels generic. Ground it in YOUR experience.'); }
 
-    // Closing
     if (lastLine.endsWith('?') && words > 50) { scores.close = 85; }
     else if (lastLine.length < 80 && lastLine.length > 10) { scores.close = 90; }
     else { scores.close = 60; tips.push('End with a strong single sentence or a genuine question'); }
 
-    // Pillar alignment
     if (pillar) { scores.pillar = 90; }
     else { scores.pillar = 50; tips.push('Select a pillar to ensure on-brand alignment'); }
 
@@ -1310,8 +2021,6 @@ function copyPost() {
 
 function selectIdea(el) {
     const title = el.querySelector('h4').textContent;
-    const desc = el.querySelector('p').textContent;
-    // Switch to composer tab
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelector('[data-tab="composer"]').classList.add('active');
