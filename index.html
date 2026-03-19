@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Authority Dashboard — Efrem Yates</title>
+    <style>
+        :root {
+            --navy: #1B3A5C;
+            --gold: #D4943A;
+            --gold-light: #F5E6C8;
+            --white: #FFFFFF;
+            --gray-50: #F8F9FA;
+            --gray-100: #F0F2F5;
+            --gray-200: #E4E7EB;
+            --gray-300: #D1D5DB;
+            --gray-500: #6B7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --green: #10B981;
+            --green-light: #D1FAE5;
+            --red: #EF4444;
+            --red-light: #FEE2E2;
+            --blue: #0A66C2;
+            --blue-light: #DBEAFE;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+        }
+
+        /* ── Navigation ── */
+        .top-bar {
+            background: var(--navy);
+            color: var(--white);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-md);
+        }
+        .top-bar h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        .top-bar .subtitle { font-size: 13px; color: var(--gold); font-weight: 500; }
+        .top-bar .profile-badge {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 24px;
+        }
+        .top-bar .profile-badge span { font-size: 13px; }
+
+        .nav-tabs {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            gap: 0;
+            padding: 0 32px;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-500);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .nav-tab:hover { color: var(--gray-700); }
+        .nav-tab.active { color: var(--navy); border-bottom-color: var(--gold); }
+
+        /* ── Layout ── */
+        .container { max-width: 1280px; margin: 0 auto; padding: 24px 32px; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+        }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px;
+        }
+        .card-header h3 {
+            font-size: 16px; font-weight: 600; color: var(--gray-900);
+        }
+        .card-badge {
+            font-size: 11px; font-weight: 600; padding: 4px 10px;
+            border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .badge-gold { background: var(--gold-light); color: var(--gold); }
+        .badge-green { background: var(--green-light); color: var(--green); }
+        .badge-blue { background: var(--blue-light); color: var(--blue); }
+        .badge-red { background: var(--red-light); color: var(--red); }
+
+        .card.featured {
+            border-left: 4px solid var(--gold);
+        }
+
+        /* ── Stats ── */
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            text-align: center;
+        }
+        .stat-card .stat-value {
+            font-size: 32px; font-weight: 700; color: var(--navy);
+            line-height: 1.2;
+        }
+        .stat-card .stat-label {
+            font-size: 12px; color: var(--gray-500); text-transform: uppercase;
+            letter-spacing: 0.5px; margin-top: 4px;
+        }
+
+        /* ── Formula Section ── */
+        .formula-box {
+            background: linear-gradient(135deg, var(--navy) 0%, #2D5A8E 100%);
+            color: var(--white);
+            border-radius: var(--radius);
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        .formula-box h2 { font-size: 22px; margin-bottom: 8px; }
+        .formula-box .formula-subtitle { color: var(--gold); font-size: 14px; margin-bottom: 20px; }
+        .formula-equation {
+            display: flex; align-items: center; justify-content: center;
+            gap: 12px; flex-wrap: wrap;
+            font-size: 18px; font-weight: 600;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px; padding: 20px;
+            margin-bottom: 20px;
+        }
+        .formula-var {
+            background: var(--gold);
+            color: var(--navy);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .formula-op { color: var(--gold); font-size: 24px; }
+
+        /* ── Pillar Cards ── */
+        .pillar-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            border-top: 4px solid var(--navy);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .pillar-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .pillar-card h4 { font-size: 15px; color: var(--navy); margin-bottom: 6px; }
+        .pillar-card p { font-size: 13px; color: var(--gray-500); margin-bottom: 12px; }
+        .pillar-tag {
+            display: inline-block; font-size: 11px; padding: 3px 8px;
+            background: var(--gray-100); border-radius: 4px; color: var(--gray-700);
+            margin-right: 4px; margin-bottom: 4px;
+        }
+
+        /* ── Post Template ── */
+        .template-step {
+            display: flex; gap: 16px; padding: 16px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .template-step:last-child { border-bottom: none; }
+        .step-num {
+            width: 36px; height: 36px; min-width: 36px;
+            background: var(--navy); color: var(--gold);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700;
+        }
+        .step-content h4 { font-size: 14px; color: var(--gray-900); margin-bottom: 4px; }
+        .step-content p { font-size: 13px; color: var(--gray-500); }
+
+        /* ── Checklist ── */
+        .checklist-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 0; border-bottom: 1px solid var(--gray-100);
+        }
+        .checklist-item:last-child { border-bottom: none; }
+        .check-box {
+            width: 20px; height: 20px; min-width: 20px;
+            border: 2px solid var(--gray-300); border-radius: 4px;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            margin-top: 2px;
+        }
+        .check-box.checked {
+            background: var(--green); border-color: var(--green); color: white;
+        }
+        .check-box.checked::after { content: '\2713'; font-size: 12px; }
+        .checklist-text { font-size: 13px; color: var(--gray-700); }
+        .checklist-text.done { text-decoration: line-through; color: var(--gray-500); }
+
+        /* ── Anatomy ── */
+        .anatomy-section {
+            padding: 14px 16px; margin-bottom: 8px;
+            border-radius: 8px; border-left: 4px solid;
+        }
+        .anatomy-section h5 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .anatomy-section p { font-size: 12px; color: var(--gray-700); }
+        .anatomy-hook { border-left-color: var(--gold); background: #FFFBF0; }
+        .anatomy-story { border-left-color: var(--blue); background: #F0F7FF; }
+        .anatomy-tension { border-left-color: var(--red); background: #FFF5F5; }
+        .anatomy-takeaway { border-left-color: var(--green); background: #F0FFF4; }
+
+        /* ── Post Ideas ── */
+        .post-idea {
+            padding: 16px; margin-bottom: 12px;
+            border-radius: 8px; border: 1px solid var(--gray-200);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .post-idea:hover { border-color: var(--gold); background: #FFFDF8; }
+        .post-idea h4 { font-size: 14px; color: var(--gray-900); margin-bottom: 6px; }
+        .post-idea .idea-meta {
+            display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+        }
+        .post-idea p { font-size: 13px; color: var(--gray-500); }
+
+        /* ── Tone Table ── */
+        .tone-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 0; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;
+        }
+        .tone-do, .tone-dont {
+            padding: 12px 16px; font-size: 13px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .tone-do { background: #F0FFF4; color: var(--green); }
+        .tone-dont { background: #FFF5F5; color: var(--red); font-style: italic; }
+
+        /* ── Weekly Planner ── */
+        .week-day {
+            display: flex; align-items: center; gap: 16px;
+            padding: 12px 16px; border-bottom: 1px solid var(--gray-100);
+            border-radius: 6px; margin-bottom: 4px;
+        }
+        .week-day:hover { background: var(--gray-50); }
+        .day-name {
+            min-width: 50px; font-size: 13px; font-weight: 600; color: var(--navy);
+        }
+        .day-action {
+            flex: 1; font-size: 13px; color: var(--gray-700);
+        }
+        .day-badge {
+            font-size: 11px; padding: 3px 10px;
+            border-radius: 12px; font-weight: 600;
+        }
+
+        /* ── Scoring ── */
+        .score-bar {
+            height: 8px; border-radius: 4px; background: var(--gray-100);
+            overflow: hidden; margin-top: 6px;
+        }
+        .score-fill {
+            height: 100%; border-radius: 4px;
+            background: linear-gradient(90deg, var(--gold), var(--navy));
+            transition: width 0.5s ease;
+        }
+
+        /* ── Post Composer ── */
+        .composer-textarea {
+            width: 100%; min-height: 200px; padding: 16px;
+            border: 2px solid var(--gray-200); border-radius: 8px;
+            font-family: inherit; font-size: 14px; line-height: 1.7;
+            resize: vertical; transition: border-color 0.2s;
+        }
+        .composer-textarea:focus {
+            outline: none; border-color: var(--gold);
+        }
+        .composer-stats {
+            display: flex; gap: 20px; margin-top: 10px; font-size: 12px; color: var(--gray-500);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 10px 20px; border-radius: 8px;
+            font-size: 13px; font-weight: 600;
+            cursor: pointer; border: none; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--navy); color: var(--white); }
+        .btn-primary:hover { background: #244B73; }
+        .btn-gold { background: var(--gold); color: var(--white); }
+        .btn-gold:hover { background: #C08530; }
+        .btn-outline {
+            background: transparent; color: var(--navy);
+            border: 2px solid var(--gray-200);
+        }
+        .btn-outline:hover { border-color: var(--navy); }
+
+        /* ── Section Headers ── */
+        .section-header {
+            margin-bottom: 20px;
+        }
+        .section-header h2 {
+            font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 4px;
+        }
+        .section-header p { font-size: 14px; color: var(--gray-500); }
+
+        .mb-24 { margin-bottom: 24px; }
+        .mb-16 { margin-bottom: 16px; }
+        .mt-24 { margin-top: 24px; }
+
+        /* ── Authority Meter ── */
+        .authority-meter {
+            position: relative; width: 200px; height: 100px;
+            margin: 0 auto 16px;
+        }
+        .meter-bg, .meter-fill {
+            position: absolute; bottom: 0; left: 0; right: 0;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+            .container { padding: 16px; }
+            .formula-equation { font-size: 14px; }
+            .top-bar { padding: 12px 16px; }
+            .nav-tabs { padding: 0 16px; }
+        }
+
+        /* ── Scroll ── */
+        .scroll-section { max-height: 400px; overflow-y: auto; }
+        .scroll-section::-webkit-scrollbar { width: 6px; }
+        .scroll-section::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+
+        /* ── Tooltip ── */
+        .info-tip {
+            display: inline-block; width: 16px; height: 16px;
+            border-radius: 50%; background: var(--gray-200);
+            color: var(--gray-500); font-size: 10px; font-weight: 700;
+            text-align: center; line-height: 16px; cursor: help;
+            margin-left: 6px;
+        }
+
+        /* ── Animation ── */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-content.active { animation: fadeIn 0.3s ease; }
+
+        /* ── High-performing post anatomy ── */
+        .hp-line {
+            padding: 8px 12px;
+            font-size: 13px;
+            border-left: 3px solid transparent;
+            margin-bottom: 2px;
+            color: var(--gray-700);
+            line-height: 1.5;
+        }
+        .hp-line.hook-line { border-left-color: var(--gold); background: #FFFBF0; }
+        .hp-line.story-line { border-left-color: var(--blue); background: #F0F7FF; }
+        .hp-line.tension-line { border-left-color: #8B5CF6; background: #F5F3FF; }
+        .hp-line.rhythm-line { border-left-color: var(--green); background: #F0FFF4; }
+        .hp-line.close-line { border-left-color: var(--red); background: #FFF5F5; }
+
+        .legend-item {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-right: 16px; font-size: 12px; color: var(--gray-700);
+        }
+        .legend-dot {
+            width: 10px; height: 10px; border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div class="top-bar">
+    <div>
+        <h1>LinkedIn Authority Dashboard</h1>
+        <div class="subtitle">Be a Lighthouse, Not a Megaphone</div>
+    </div>
+    <div class="profile-badge">
+        <span><strong>Efrem Yates</strong> &middot; Aspiring CPA &middot; UNC Kenan-Flagler</span>
+    </div>
+</div>
+
+<!-- ── Nav Tabs ── -->
+<div class="nav-tabs">
+    <div class="nav-tab active" data-tab="formula">Authority Formula</div>
+    <div class="nav-tab" data-tab="anatomy">Post Anatomy</div>
+    <div class="nav-tab" data-tab="pillars">Content Pillars</div>
+    <div class="nav-tab" data-tab="ideas">Post Ideas</div>
+    <div class="nav-tab" data-tab="composer">Post Composer</div>
+    <div class="nav-tab" data-tab="calendar">Weekly Planner</div>
+    <div class="nav-tab" data-tab="voice">Voice & Tone</div>
+</div>
+
+<div class="container">
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 1: AUTHORITY FORMULA                         -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content active" id="tab-formula">
+
+    <!-- Formula Hero -->
+    <div class="formula-box">
+        <h2>The Lighthouse Authority Formula</h2>
+        <div class="formula-subtitle">Your positioning equation for maximum LinkedIn visibility and niche authority</div>
+        <div class="formula-equation">
+            <span class="formula-var">Lived Experience</span>
+            <span class="formula-op">&times;</span>
+            <span class="formula-var">Active Learning</span>
+            <span class="formula-op">+</span>
+            <span class="formula-var">Honest Reflection</span>
+            <span class="formula-op">&times;</span>
+            <span class="formula-var">Consistency</span>
+            <span class="formula-op">=</span>
+            <span class="formula-var" style="background:var(--white);color:var(--navy);font-size:16px;">AUTHORITY</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center;">
+            <div>
+                <div style="font-size:14px;font-weight:600;">Lived Experience</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">10+ years leading teams, running a restaurant, making high-stakes decisions</div>
+            </div>
+            <div>
+                <div style="font-size:14px;font-weight:600;">Active Learning</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">Master of Accounting at UNC Kenan-Flagler, CPA exam preparation</div>
+            </div>
+            <div>
+                <div style="font-size:14px;font-weight:600;">Honest Reflection</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">Sharing what went wrong, what you'd change, what you're realizing now</div>
+            </div>
+            <div>
+                <div style="font-size:14px;font-weight:600;">Consistency</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">1 post/week, 3-5 comments, never dark for more than 3 weeks</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Stats -->
+    <div class="grid-4 mb-24">
+        <div class="stat-card">
+            <div class="stat-value">1</div>
+            <div class="stat-label">Posts Per Week</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">3-5</div>
+            <div class="stat-label">Comments Per Week</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">1-2</div>
+            <div class="stat-label">Connections Per Week</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">&lt;250</div>
+            <div class="stat-label">Words Per Post</div>
+        </div>
+    </div>
+
+    <!-- Strategy Breakdown -->
+    <div class="grid-2 mb-24">
+        <div class="card featured">
+            <div class="card-header">
+                <h3>Your Unfair Advantage</h3>
+                <span class="card-badge badge-gold">Positioning</span>
+            </div>
+            <p style="font-size:14px;color:var(--gray-700);margin-bottom:12px;">
+                Most LinkedIn finance voices are either <strong>pure academics</strong> or <strong>career CPAs explaining theory</strong>. Most leadership voices are long on inspiration and short on specifics. <strong>You sit in neither camp.</strong>
+            </p>
+            <div style="background:var(--gold-light);border-radius:8px;padding:16px;font-size:13px;color:var(--navy);font-weight:500;">
+                "I help growth-minded professionals and operators see that business literacy isn't just an accountant's job — it's a leadership skill. I'm learning it in real time, sharing what actually matters, and proving that starting over in your career isn't a setback. It's a sharper angle."
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h3>The Compelling Tension</h3>
+                <span class="card-badge badge-blue">Brand Core</span>
+            </div>
+            <p style="font-size:14px;color:var(--gray-700);margin-bottom:16px;">
+                Your authority comes from a <strong>gap that most people feel but few articulate</strong>:
+            </p>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <div style="flex:1;text-align:center;padding:16px;background:var(--gray-50);border-radius:8px;">
+                    <div style="font-size:13px;font-weight:600;color:var(--navy);">What You Were</div>
+                    <div style="font-size:12px;color:var(--gray-500);margin-top:4px;">An operator leading by gut and instinct</div>
+                </div>
+                <div style="font-size:24px;color:var(--gold);">&#8594;</div>
+                <div style="flex:1;text-align:center;padding:16px;background:var(--gold-light);border-radius:8px;">
+                    <div style="font-size:13px;font-weight:600;color:var(--navy);">What You're Becoming</div>
+                    <div style="font-size:12px;color:var(--gray-500);margin-top:4px;">An educated operator leading by data + instinct</div>
+                </div>
+            </div>
+            <p style="font-size:12px;color:var(--gray-500);">
+                This journey resonates with founders, managers, career-changers, and anyone who has ever felt out of their depth with a balance sheet.
+            </p>
+        </div>
+    </div>
+
+    <!-- Authority Multipliers -->
+    <div class="section-header"><h2>Authority Multipliers</h2><p>Seven levers that amplify your lighthouse signal</p></div>
+    <div class="grid-3 mb-24">
+        <div class="card">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">1. Specificity Over Generality</h4>
+            <p style="font-size:13px;color:var(--gray-500);">Name the exact dollar amount, the specific concept, the real scenario. "Food cost hit 38% that month" beats "costs were high."</p>
+            <div class="score-bar"><div class="score-fill" style="width:95%"></div></div>
+        </div>
+        <div class="card">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">2. Hindsight + Current Learning</h4>
+            <p style="font-size:13px;color:var(--gray-500);">"I made X mistake. Now I'm learning Y concept. Here's how they connect." This combination is unusually honest and useful.</p>
+            <div class="score-bar"><div class="score-fill" style="width:100%"></div></div>
+        </div>
+        <div class="card">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">3. Mirror, Not Advice</h4>
+            <p style="font-size:13px;color:var(--gray-500);">"If you've ever felt X, then Y might feel familiar." Let people see themselves. Don't tell them what to do.</p>
+            <div class="score-bar"><div class="score-fill" style="width:88%"></div></div>
+        </div>
+        <div class="card">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">4. Short-Paragraph Rhythm</h4>
+            <p style="font-size:13px;color:var(--gray-500);">1-3 sentences per paragraph. White space is your friend. LinkedIn readers skim first, then return to read if the rhythm pulls them in.</p>
+            <div class="score-bar"><div class="score-fill" style="width:92%"></div></div>
+        </div>
+        <div class="card">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">5. Tension & Contrast</h4>
+            <p style="font-size:13px;color:var(--gray-500);">The best posts hold two truths in tension: "I was good at leading people AND terrible at understanding my own business."</p>
+            <div class="score-bar"><div class="score-fill" style="width:90%"></div></div>
+        </div>
+        <div class="card">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">6. Strategic Commenting</h4>
+            <p style="font-size:13px;color:var(--gray-500);">3-5 thoughtful 2-sentence comments per week on CFOs, finance leaders, and CPA voices. This generates more profile views than posting.</p>
+            <div class="score-bar"><div class="score-fill" style="width:85%"></div></div>
+        </div>
+        <div class="card" style="grid-column: span 3;">
+            <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">7. The Shelf Test</h4>
+            <p style="font-size:13px;color:var(--gray-500);">"Would I be proud of this post in six months?" Lighthouse content ages well. Trendy content doesn't. If the answer is yes, post it. If not, it needs more thought.</p>
+            <div class="score-bar"><div class="score-fill" style="width:96%"></div></div>
+        </div>
+    </div>
+
+    <!-- Content Filter -->
+    <div class="section-header"><h2>The 4-Question Content Filter</h2><p>Run every post through this before publishing</p></div>
+    <div class="grid-2">
+        <div class="card">
+            <div id="filter-checklist">
+                <div class="checklist-item">
+                    <div class="check-box" onclick="toggleCheck(this)"></div>
+                    <div>
+                        <div class="checklist-text"><strong>1. Is this useful?</strong></div>
+                        <div style="font-size:12px;color:var(--gray-500);">Would a thoughtful operator, finance learner, or career-builder walk away with something worth the 90 seconds it takes to read?</div>
+                    </div>
+                </div>
+                <div class="checklist-item">
+                    <div class="check-box" onclick="toggleCheck(this)"></div>
+                    <div>
+                        <div class="checklist-text"><strong>2. Is this true to my voice?</strong></div>
+                        <div style="font-size:12px;color:var(--gray-500);">Would someone who knows me personally recognize this? Does it sound like a real person or like "LinkedIn content"?</div>
+                    </div>
+                </div>
+                <div class="checklist-item">
+                    <div class="check-box" onclick="toggleCheck(this)"></div>
+                    <div>
+                        <div class="checklist-text"><strong>3. Is this relevant to my audience?</strong></div>
+                        <div style="font-size:12px;color:var(--gray-500);">Does this connect to leadership, business literacy, the CPA journey, or running something?</div>
+                    </div>
+                </div>
+                <div class="checklist-item">
+                    <div class="check-box" onclick="toggleCheck(this)"></div>
+                    <div>
+                        <div class="checklist-text"><strong>4. Is this worth sharing even if it gets 12 likes?</strong></div>
+                        <div style="font-size:12px;color:var(--gray-500);">If one thoughtful comment from exactly the right person is enough, post it.</div>
+                    </div>
+                </div>
+            </div>
+            <div id="filter-result" style="margin-top:16px;padding:12px;border-radius:8px;text-align:center;font-weight:600;font-size:14px;display:none;"></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h3>What to Avoid</h3><span class="card-badge badge-red">Red Flags</span></div>
+            <div style="font-size:13px;color:var(--gray-700);">
+                <div style="padding:6px 0;border-bottom:1px solid var(--gray-100);">&#10007; Lessons framed as universal truths when they're personal observations</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--gray-100);">&#10007; Vulnerability as strategy — sharing struggle just for engagement</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--gray-100);">&#10007; Trendy formats that don't match your voice (generic carousels, hot-takes)</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--gray-100);">&#10007; Claiming expertise you don't yet have</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--gray-100);">&#10007; Posting about posting ("what it means to show up on LinkedIn...")</div>
+                <div style="padding:6px 0;border-bottom:1px solid var(--gray-100);">&#10007; Motivational content with no specificity</div>
+                <div style="padding:6px 0;">&#10007; Engagement bait questions unconnected to your thinking</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 2: POST ANATOMY                              -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-anatomy">
+
+    <div class="section-header">
+        <h2>Anatomy of a High-Performing Post</h2>
+        <p>Deconstructing Gavin Jordan's viral finance post (108 reactions, 39 comments, 19 reposts)</p>
+    </div>
+
+    <div class="grid-2 mb-24">
+        <!-- Left: Annotated Post -->
+        <div class="card">
+            <div class="card-header">
+                <h3>The Post — Annotated</h3>
+                <span class="card-badge badge-gold">108 Reactions</span>
+            </div>
+            <div style="margin-bottom:12px;">
+                <span class="legend-item"><span class="legend-dot" style="background:var(--gold);"></span> Hook</span>
+                <span class="legend-item"><span class="legend-dot" style="background:var(--blue);"></span> Story</span>
+                <span class="legend-item"><span class="legend-dot" style="background:#8B5CF6;"></span> Tension</span>
+                <span class="legend-item"><span class="legend-dot" style="background:var(--green);"></span> Rhythm & Repetition</span>
+                <span class="legend-item"><span class="legend-dot" style="background:var(--red);"></span> Close</span>
+            </div>
+            <div class="scroll-section" style="max-height:500px;">
+                <div class="hp-line hook-line"><strong>Finance isn't buried because it's bad at its job. It's buried because it's too good at everyone else's.</strong></div>
+                <div class="hp-line story-line">I said something in a leadership meeting once that made the room go silent.</div>
+                <div class="hp-line story-line">A department head spent twenty minutes explaining why their team's errors kept landing in finance's lap. System issues. Staff turnover. Process gaps. Twenty minutes of reasons why finance should keep cleaning up their mess.</div>
+                <div class="hp-line story-line">I let them finish. Then I said it.</div>
+                <div class="hp-line tension-line"><strong>Your inability to manage your own function is not finance's problem to solve.</strong></div>
+                <div class="hp-line story-line">The silence was uncomfortable. Good.</div>
+                <div class="hp-line rhythm-line">Finance had been cleaning up that department's failures for so long that saying no felt like breaking the rules.</div>
+                <div class="hp-line rhythm-line">And it wasn't just them. It never is.</div>
+                <div class="hp-line rhythm-line">A decision gets made without checking the numbers. <strong>Finance finds out when it hits the accounts.</strong> A process breaks down in operations. <strong>Finance is reconciling the fallout.</strong> A project runs over budget because nobody was tracking it. <strong>Finance inherits the wreckage.</strong></div>
+                <div class="hp-line tension-line">Other teams have quietly learned they don't need to be rigorous. Because finance will catch it. Finance always catches it.</div>
+                <div class="hp-line tension-line">So they get sloppy. And finance gets busier. And then those same teams sit in the same meetings wondering why finance isn't more strategic.</div>
+                <div class="hp-line close-line"><strong>The most dangerous thing finance ever did was make being a dumping ground look effortless.</strong></div>
+                <div class="hp-line close-line">What is your finance team carrying right now that belongs to someone else?</div>
+            </div>
+        </div>
+
+        <!-- Right: Pattern Analysis -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Why This Post Worked</h3>
+                <span class="card-badge badge-green">Pattern Analysis</span>
+            </div>
+
+            <div class="anatomy-section anatomy-hook">
+                <h5>1. Contrarian Hook (Line 1)</h5>
+                <p>Flips an assumption: finance isn't underperforming, it's <em>overperforming for others</em>. Creates instant cognitive tension — the reader has to reconcile this.</p>
+            </div>
+            <div class="anatomy-section anatomy-story">
+                <h5>2. Cinematic Moment</h5>
+                <p>"I let them finish. Then I said it." — This is screenplay pacing. Short. Deliberate. Builds anticipation before the punchline. The reader is IN the room.</p>
+            </div>
+            <div class="anatomy-section anatomy-tension">
+                <h5>3. Bold Statement as Turning Point</h5>
+                <p>"Your inability to manage your own function is not finance's problem to solve." — This is the line people screenshot and share. Specific, confrontational, undeniably true for the audience.</p>
+            </div>
+            <div class="anatomy-section anatomy-takeaway" style="border-left-color:var(--green);">
+                <h5>4. Repetition as Rhythm Engine</h5>
+                <p>"Finance finds out... Finance is reconciling... Finance inherits..." — Parallel structure builds momentum. Each repetition hammers the thesis deeper. The reader nods harder each time.</p>
+            </div>
+            <div class="anatomy-section" style="border-left-color:#8B5CF6;background:#F5F3FF;">
+                <h5>5. The Inversion</h5>
+                <p>"Those same teams sit in the same meetings wondering why finance isn't more strategic." — This is the killer irony. The very people causing the problem are questioning the victims of it.</p>
+            </div>
+            <div class="anatomy-section anatomy-hook">
+                <h5>6. Quotable Close + Open Question</h5>
+                <p>The closing line is shareable on its own. The question invites personal reflection without being engagement bait — because the post already earned the right to ask.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Your Template -->
+    <div class="section-header"><h2>Your Lighthouse Post Template</h2><p>The structure behind every strong post</p></div>
+    <div class="card mb-24">
+        <div class="template-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+                <h4>Open with a Specific Truth (1-2 lines)</h4>
+                <p>Not a hook. Not a question designed to grab attention. A sentence that is just <em>true</em>, and specific enough that the right person immediately recognizes it. The goal is resonance, not reach.</p>
+                <div style="margin-top:8px;padding:10px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-700);font-style:italic;">
+                    Example: "Running a restaurant with no idea how to read a P&L is like driving with a map you can't interpret."
+                </div>
+            </div>
+        </div>
+        <div class="template-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+                <h4>Short Story or Moment (3-6 lines)</h4>
+                <p>One real situation. Keep it tight. What happened, what you thought at the time, and what you understand now. No need to dramatize — the specificity does the work.</p>
+            </div>
+        </div>
+        <div class="template-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+                <h4>The Applicable Takeaway (2-3 lines)</h4>
+                <p>What does this mean for someone else? Not advice — more like a mirror. "If you've ever [X], then [Y] might feel familiar." Or simply: "Here's the thing I'd do differently."</p>
+            </div>
+        </div>
+        <div class="template-step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+                <h4>Close with a Thought or Question (1 line)</h4>
+                <p>Optional. A strong final sentence that doesn't ask anything is better than a hollow question. Only ask when it's genuine and earned by the post.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Efrem's Adaptation -->
+    <div class="section-header"><h2>Adapting This Pattern for Your Brand</h2></div>
+    <div class="grid-2">
+        <div class="card featured">
+            <div class="card-header"><h3>Gavin's Pattern (CFO Authority)</h3></div>
+            <div style="font-size:13px;color:var(--gray-700);">
+                <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking DOWN from expertise</p>
+                <p style="margin-bottom:8px;"><strong>Tone:</strong> Confrontational, authoritative, decisive</p>
+                <p style="margin-bottom:8px;"><strong>Power move:</strong> "I said this bold thing in a meeting"</p>
+                <p><strong>Audience contract:</strong> "I've been there, I know the answer"</p>
+            </div>
+        </div>
+        <div class="card featured">
+            <div class="card-header"><h3>Your Pattern (Educated Operator)</h3></div>
+            <div style="font-size:13px;color:var(--gray-700);">
+                <p style="margin-bottom:8px;"><strong>Position:</strong> Speaking ACROSS from recognition</p>
+                <p style="margin-bottom:8px;"><strong>Tone:</strong> Honest, self-aware, warm, specific</p>
+                <p style="margin-bottom:8px;"><strong>Power move:</strong> "I made this mistake. Here's what I now understand about why."</p>
+                <p><strong>Audience contract:</strong> "I've been where you are, I'm learning the answer, and I'm showing my work"</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 3: CONTENT PILLARS                           -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-pillars">
+
+    <div class="section-header">
+        <h2>Your Five Content Pillars</h2>
+        <p>Rotate through these based on what's alive for you. Lean into what feels genuine.</p>
+    </div>
+
+    <div class="grid-3 mb-24">
+        <div class="pillar-card" style="border-top-color:#D4943A;">
+            <h4>The Educated Operator</h4>
+            <p>What changes when a leader learns to read the numbers</p>
+            <div>
+                <span class="pillar-tag">Decisions I'd make differently</span>
+                <span class="pillar-tag">Cost of financial illiteracy</span>
+                <span class="pillar-tag">Gut vs. data leadership</span>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--gray-500);">
+                <strong>Audience:</strong> Leaders, founders, operators who know they should understand finance but feel behind
+            </div>
+        </div>
+        <div class="pillar-card" style="border-top-color:#0A66C2;">
+            <h4>The CPA Journey</h4>
+            <p>Learning in public — the real, unpolished version</p>
+            <div>
+                <span class="pillar-tag">What I'm studying & why</span>
+                <span class="pillar-tag">Concepts that surprised me</span>
+                <span class="pillar-tag">The exam process</span>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--gray-500);">
+                <strong>Audience:</strong> Career-changers, non-traditional learners, professionals considering credentialing
+            </div>
+        </div>
+        <div class="pillar-card" style="border-top-color:#EF4444;">
+            <h4>Restaurant School</h4>
+            <p>Hard lessons from thin margins and high pressure</p>
+            <div>
+                <span class="pillar-tag">Cash flow lessons</span>
+                <span class="pillar-tag">Hiring under pressure</span>
+                <span class="pillar-tag">Food & labor cost</span>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--gray-500);">
+                <strong>Audience:</strong> Operators, entrepreneurs, anyone who's run something and felt underprepared
+            </div>
+        </div>
+        <div class="pillar-card" style="border-top-color:#10B981;">
+            <h4>Business Literacy for Leaders</h4>
+            <p>Finance concepts made accessible through real context</p>
+            <div>
+                <span class="pillar-tag">P&L demystified</span>
+                <span class="pillar-tag">Revenue vs. profit</span>
+                <span class="pillar-tag">Margins & management</span>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--gray-500);">
+                <strong>Audience:</strong> Mid-level managers and team leads who didn't come up through finance
+            </div>
+        </div>
+        <div class="pillar-card" style="border-top-color:#8B5CF6;">
+            <h4>Personal Brand in Practice</h4>
+            <p>What it actually looks like to build identity through honest work</p>
+            <div>
+                <span class="pillar-tag">Why I don't post daily</span>
+                <span class="pillar-tag">Credibility while learning</span>
+                <span class="pillar-tag">What's worth sharing</span>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--gray-500);">
+                <strong>Audience:</strong> Professionals building their presence who are tired of being told to post more
+            </div>
+        </div>
+    </div>
+
+    <!-- Pillar Rotation Guide -->
+    <div class="card">
+        <div class="card-header"><h3>Pillar Rotation Strategy</h3><span class="card-badge badge-gold">Monthly Rhythm</span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;">
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <div style="font-size:12px;font-weight:600;color:var(--navy);">Week 1</div>
+                <div style="font-size:13px;color:var(--gray-700);margin-top:4px;">The Educated Operator<br><em>or</em> Restaurant School</div>
+                <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">Your strongest pillar — lead with lived experience</div>
+            </div>
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <div style="font-size:12px;font-weight:600;color:var(--navy);">Week 2</div>
+                <div style="font-size:13px;color:var(--gray-700);margin-top:4px;">The CPA Journey</div>
+                <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">Learning in public — what clicked or surprised you</div>
+            </div>
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <div style="font-size:12px;font-weight:600;color:var(--navy);">Week 3</div>
+                <div style="font-size:13px;color:var(--gray-700);margin-top:4px;">Business Literacy for Leaders</div>
+                <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">Teach one concept through a real scenario</div>
+            </div>
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <div style="font-size:12px;font-weight:600;color:var(--navy);">Week 4</div>
+                <div style="font-size:13px;color:var(--gray-700);margin-top:4px;">Personal Brand<br><em>or</em> Flex Week</div>
+                <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">Reflect on the journey, or double down on what's resonating</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 4: POST IDEAS                                -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-ideas">
+    <div class="section-header">
+        <h2>12 Ready-to-Write Post Ideas</h2>
+        <p>Each includes the pillar, core insight, and enough direction to write without overthinking</p>
+    </div>
+
+    <div class="grid-2">
+        <div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-gold">Educated Operator</span>
+                    <span class="card-badge badge-red">Restaurant School</span>
+                </div>
+                <h4>1. The decision that cost me the most — and I didn't know why until I started studying accounting</h4>
+                <p>A specific financial mistake from your restaurant — reframed through what you now understand about cash flow or margins.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta"><span class="card-badge badge-blue">CPA Journey</span></div>
+                <h4>2. I've been studying debits and credits for three weeks. Here's what no one told me about why it's confusing.</h4>
+                <p>The moment something clicked — or the moment you realized why it hadn't. Be precise about the concept.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-red">Restaurant School</span>
+                    <span class="card-badge badge-gold">Educated Operator</span>
+                </div>
+                <h4>3. Running a restaurant taught me more about leadership than any book. But also how much I didn't know.</h4>
+                <p>The tension between being a good leader in the room and being financially illiterate about the business you're leading.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta"><span class="card-badge badge-green">Business Literacy</span></div>
+                <h4>4. There's a difference between knowing your revenue and understanding your business.</h4>
+                <p>Revenue vs. profit — through a real scenario where revenue looked fine and something still went wrong.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta"><span class="card-badge" style="background:#F5F3FF;color:#8B5CF6;">Personal Brand</span></div>
+                <h4>5. I'm not an expert. I'm a student with context. Here's the difference.</h4>
+                <p>The philosophy behind how you share. Experience + active learning = useful point of view without pretending you've arrived.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-blue">CPA Journey</span>
+                    <span class="card-badge badge-gold">Educated Operator</span>
+                </div>
+                <h4>6. What studying for the CPA exam is teaching me about how I managed people.</h4>
+                <p>A CPA concept (cost accounting, budgeting) that you now recognize would have changed a management decision.</p>
+            </div>
+        </div>
+        <div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-red">Restaurant School</span>
+                    <span class="card-badge badge-green">Business Literacy</span>
+                </div>
+                <h4>7. Everything in a thin-margin business is a financial decision — even if you don't know it yet.</h4>
+                <p>A "people decision" that was actually a financial one. What did understanding margins later reveal?</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta"><span class="card-badge badge-green">Business Literacy</span></div>
+                <h4>8. What I wish someone had told me about reading a P&L before I owned a business.</h4>
+                <p>One thing on a P&L that most non-finance business owners misunderstand — grounded in your experience.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-red">Restaurant School</span>
+                    <span class="card-badge badge-gold">Educated Operator</span>
+                </div>
+                <h4>9. I used to hire based on who I liked in the interview. Studying labor cost analysis changed that.</h4>
+                <p>A real hiring story connected to what you now understand about labor cost as % of revenue.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-blue">CPA Journey</span>
+                    <span class="card-badge" style="background:#F5F3FF;color:#8B5CF6;">Personal Brand</span>
+                </div>
+                <h4>10. The CPA path is long. Here's why I'm still doing it.</h4>
+                <p>Honest motivation. Not inspirational — just true. What do you want to be able to do that you can't do now?</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta"><span class="card-badge badge-green">Business Literacy</span></div>
+                <h4>11. One accounting concept every business owner should understand before they need it.</h4>
+                <p>Pick one: AP vs. AR, gross margin, or cash flow statement. Explain it in 150 words through a real scenario.</p>
+            </div>
+            <div class="post-idea" onclick="selectIdea(this)">
+                <div class="idea-meta">
+                    <span class="card-badge badge-gold">Educated Operator</span>
+                    <span class="card-badge badge-green">Business Literacy</span>
+                </div>
+                <h4>12. Leadership requires knowing which questions to ask — and that's a financial skill.</h4>
+                <p>The financial questions a leader should be asking. Not knowing how to ask them is a leadership gap, not just knowledge.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 5: POST COMPOSER                             -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-composer">
+    <div class="section-header">
+        <h2>Post Composer</h2>
+        <p>Write, score, and refine your posts before publishing</p>
+    </div>
+
+    <div class="grid-2">
+        <div>
+            <div class="card mb-16">
+                <div class="card-header"><h3>Write Your Post</h3></div>
+                <select id="pillar-select" style="width:100%;padding:10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;margin-bottom:12px;">
+                    <option value="">Select a pillar...</option>
+                    <option value="operator">The Educated Operator</option>
+                    <option value="cpa">The CPA Journey</option>
+                    <option value="restaurant">Restaurant School</option>
+                    <option value="literacy">Business Literacy for Leaders</option>
+                    <option value="brand">Personal Brand in Practice</option>
+                </select>
+                <textarea class="composer-textarea" id="post-text" placeholder="Start writing your post here...
+
+Remember the template:
+1. Open with a specific truth (1-2 lines)
+2. Short story or moment (3-6 lines)
+3. The applicable takeaway (2-3 lines)
+4. Close with a thought or question (1 line)"></textarea>
+                <div class="composer-stats">
+                    <span>Words: <strong id="word-count">0</strong> / 250</span>
+                    <span>Characters: <strong id="char-count">0</strong> / 3,000</span>
+                    <span>Paragraphs: <strong id="para-count">0</strong></span>
+                    <span>Read time: <strong id="read-time">0s</strong></span>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary" onclick="scorePost()">Score This Post</button>
+                <button class="btn btn-outline" onclick="clearComposer()">Clear</button>
+                <button class="btn btn-outline" onclick="copyPost()">Copy to Clipboard</button>
+            </div>
+        </div>
+        <div>
+            <div class="card" id="score-card">
+                <div class="card-header"><h3>Post Score</h3><span class="card-badge badge-gold">Write to see score</span></div>
+                <div id="score-results">
+                    <div style="text-align:center;padding:40px;color:var(--gray-500);font-size:14px;">
+                        Write your post and click "Score This Post" to get feedback on structure, length, tone alignment, and lighthouse fit.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 6: WEEKLY PLANNER                            -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-calendar">
+    <div class="section-header">
+        <h2>Weekly Planner</h2>
+        <p>Your sustainable rhythm: 15-20 minutes of engagement per week + 1 post</p>
+    </div>
+
+    <div class="grid-2 mb-24">
+        <div class="card">
+            <div class="card-header"><h3>This Week's Actions</h3><span class="card-badge badge-green">Active</span></div>
+            <div class="week-day">
+                <div class="day-name">Mon</div>
+                <div class="day-action">Browse feed. Leave 1-2 thoughtful comments on posts from operators, CFOs, or career-changers.</div>
+                <span class="day-badge" style="background:var(--blue-light);color:var(--blue);">Engage</span>
+            </div>
+            <div class="week-day" style="background:var(--gold-light);border-radius:6px;">
+                <div class="day-name">Tue</div>
+                <div class="day-action"><strong>Publish your weekly post.</strong> Best window: 7-9am local time.</div>
+                <span class="day-badge" style="background:var(--gold-light);color:var(--gold);">Post Day</span>
+            </div>
+            <div class="week-day">
+                <div class="day-name">Wed</div>
+                <div class="day-action">Respond to every comment on your post. Leave 1-2 comments on others' posts.</div>
+                <span class="day-badge" style="background:var(--blue-light);color:var(--blue);">Engage</span>
+            </div>
+            <div class="week-day">
+                <div class="day-name">Thu</div>
+                <div class="day-action">Leave 1-2 comments. Send 1 connection request with a personal note.</div>
+                <span class="day-badge" style="background:var(--green-light);color:var(--green);">Connect</span>
+            </div>
+            <div class="week-day">
+                <div class="day-name">Fri</div>
+                <div class="day-action">Optional: respond to lingering comments. Start thinking about next week's post topic.</div>
+                <span class="day-badge" style="background:var(--gray-100);color:var(--gray-500);">Reflect</span>
+            </div>
+            <div class="week-day">
+                <div class="day-name">Sat-Sun</div>
+                <div class="day-action">Off. Or draft next week's post if inspiration strikes. No pressure.</div>
+                <span class="day-badge" style="background:var(--gray-100);color:var(--gray-500);">Rest</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3>Monthly Check-in</h3><span class="card-badge badge-blue">10 Minutes</span></div>
+            <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">Once a month, review your last 4 posts:</p>
+            <div class="checklist-item">
+                <div class="check-box" onclick="toggleCheck(this)"></div>
+                <div class="checklist-text">Which post got the most engagement?</div>
+            </div>
+            <div class="checklist-item">
+                <div class="check-box" onclick="toggleCheck(this)"></div>
+                <div class="checklist-text">Which one felt most true to my voice?</div>
+            </div>
+            <div class="checklist-item">
+                <div class="check-box" onclick="toggleCheck(this)"></div>
+                <div class="checklist-text">Are those the same post? If not, explore why.</div>
+            </div>
+            <div class="checklist-item">
+                <div class="check-box" onclick="toggleCheck(this)"></div>
+                <div class="checklist-text">Am I leaning too heavily on one pillar?</div>
+            </div>
+            <div class="checklist-item">
+                <div class="check-box" onclick="toggleCheck(this)"></div>
+                <div class="checklist-text">Did I stay visible between posts (comments)?</div>
+            </div>
+
+            <div style="margin-top:24px;padding:16px;background:var(--gray-50);border-radius:8px;">
+                <h4 style="font-size:14px;color:var(--navy);margin-bottom:8px;">The Rule</h4>
+                <p style="font-size:13px;color:var(--gray-700);">
+                    <strong>Never dark for more than 3 weeks.</strong> Disappearing for a month means starting from a lower baseline. A simple reappearance post — honest about where you've been — resets the rhythm.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Engagement Tips -->
+    <div class="card">
+        <div class="card-header"><h3>Commenting Strategy</h3><span class="card-badge badge-gold">High-ROI Activity</span></div>
+        <div class="grid-3">
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px;">Who to Comment On</h4>
+                <p style="font-size:12px;color:var(--gray-500);">CFOs, finance leaders, CPA voices, operators, career-changers, founders sharing lessons — people in or adjacent to your niche.</p>
+            </div>
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px;">How to Comment</h4>
+                <p style="font-size:12px;color:var(--gray-500);">Two sentences that show you actually read the post. Add a personal connection or extend their point. A two-sentence comment &gt; ten emoji reactions.</p>
+            </div>
+            <div style="padding:16px;background:var(--gray-50);border-radius:8px;">
+                <h4 style="font-size:13px;color:var(--navy);margin-bottom:6px;">Connection Requests</h4>
+                <p style="font-size:12px;color:var(--gray-500);">1-2 per week. Always include a short personal note referencing what you commented on. Never a generic "I'd like to add you."</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- TAB 7: VOICE & TONE                              -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-voice">
+    <div class="section-header">
+        <h2>Voice & Tone Guidelines</h2>
+        <p>How you should sound — and how you shouldn't</p>
+    </div>
+
+    <div class="grid-2 mb-24">
+        <div class="card">
+            <div class="card-header"><h3>Sound Like This</h3><span class="card-badge badge-green">Do</span></div>
+            <div class="tone-grid" style="grid-template-columns:1fr;">
+                <div class="tone-do"><strong>Thoughtful</strong> — you've sat with this before sharing it</div>
+                <div class="tone-do"><strong>Credible</strong> — specific enough to be believed</div>
+                <div class="tone-do"><strong>Warm</strong> — you care about the reader's situation</div>
+                <div class="tone-do"><strong>Self-aware</strong> — you know what you don't know yet</div>
+                <div class="tone-do"><strong>Practical</strong> — there's something usable here</div>
+                <div class="tone-do"><strong>Clear</strong> — a 12-year-old could follow the logic</div>
+                <div class="tone-do"><strong>Humble</strong> — you're on the journey, not above it</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h3>Not Like This</h3><span class="card-badge badge-red">Don't</span></div>
+            <div class="tone-grid" style="grid-template-columns:1fr;">
+                <div class="tone-dont"><strong>Reactive</strong> — posting something because it just happened</div>
+                <div class="tone-dont"><strong>Vague</strong> — so general it could apply to anyone</div>
+                <div class="tone-dont"><strong>Transactional</strong> — the post is really about your metrics</div>
+                <div class="tone-dont"><strong>Overconfident</strong> — claiming expertise you're still building</div>
+                <div class="tone-dont"><strong>Abstract</strong> — inspiring but not actionable</div>
+                <div class="tone-dont"><strong>Jargon-heavy</strong> — using finance terms to signal authority</div>
+                <div class="tone-dont"><strong>Preachy</strong> — telling people what they should do</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3>A Note on Learning Out Loud</h3></div>
+        <div style="padding:16px;background:var(--gold-light);border-radius:8px;font-size:14px;color:var(--navy);">
+            <p>When writing about accounting or finance topics you're currently studying, the most trustworthy framing is always:</p>
+            <p style="margin-top:8px;font-weight:600;font-style:italic;">"Here's what I'm learning, here's what it made me realize, and here's why I think it matters for people in situations like mine."</p>
+            <p style="margin-top:8px;">You don't need to be the expert. You need to be the <strong>honest student with real-world context</strong>. That's actually harder to find on LinkedIn — and more valuable.</p>
+        </div>
+    </div>
+</div>
+
+</div><!-- end .container -->
+
+<script>
+// ── Tab Navigation ──
+document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+});
+
+// ── Checklist Toggle ──
+function toggleCheck(el) {
+    el.classList.toggle('checked');
+    const text = el.nextElementSibling;
+    if (text) {
+        const mainText = text.querySelector('.checklist-text') || text;
+        mainText.classList.toggle('done');
+    }
+    updateFilterResult();
+}
+
+function updateFilterResult() {
+    const checks = document.querySelectorAll('#filter-checklist .check-box');
+    const total = checks.length;
+    const checked = document.querySelectorAll('#filter-checklist .check-box.checked').length;
+    const result = document.getElementById('filter-result');
+
+    if (checked === 0) {
+        result.style.display = 'none';
+        return;
+    }
+
+    result.style.display = 'block';
+    if (checked === total) {
+        result.style.background = '#D1FAE5';
+        result.style.color = '#10B981';
+        result.textContent = 'All clear — this post is ready to publish.';
+    } else if (checked >= 3) {
+        result.style.background = '#FEF3C7';
+        result.style.color = '#D97706';
+        result.textContent = checked + '/' + total + ' — Almost there. Review the unchecked items.';
+    } else {
+        result.style.background = '#FEE2E2';
+        result.style.color = '#EF4444';
+        result.textContent = checked + '/' + total + ' — Needs work. Revise before posting.';
+    }
+}
+
+// ── Post Composer ──
+const postText = document.getElementById('post-text');
+postText.addEventListener('input', updateComposerStats);
+
+function updateComposerStats() {
+    const text = postText.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    const chars = text.length;
+    const paras = text ? text.split(/\n\s*\n/).filter(p => p.trim()).length : 0;
+    const readTime = Math.max(1, Math.ceil(words / 200));
+
+    document.getElementById('word-count').textContent = words;
+    document.getElementById('word-count').style.color = words > 250 ? '#EF4444' : words > 200 ? '#D97706' : '#10B981';
+    document.getElementById('char-count').textContent = chars.toLocaleString();
+    document.getElementById('para-count').textContent = paras;
+    document.getElementById('read-time').textContent = readTime + 'min';
+}
+
+function scorePost() {
+    const text = postText.value.trim();
+    if (!text) return;
+
+    const words = text.split(/\s+/).length;
+    const paras = text.split(/\n\s*\n/).filter(p => p.trim());
+    const lines = text.split('\n').filter(l => l.trim());
+    const pillar = document.getElementById('pillar-select').value;
+    const firstLine = lines[0] || '';
+    const lastLine = lines[lines.length - 1] || '';
+
+    let scores = {};
+    let tips = [];
+
+    // Length score
+    if (words <= 250) { scores.length = 100; }
+    else if (words <= 300) { scores.length = 75; tips.push('Slightly long — try cutting 20-30 words'); }
+    else { scores.length = 40; tips.push('Too long. Aim for under 250 words'); }
+
+    // Paragraph structure
+    const avgParaWords = words / Math.max(paras.length, 1);
+    if (avgParaWords <= 40 && paras.length >= 3) { scores.structure = 95; }
+    else if (avgParaWords <= 60) { scores.structure = 70; tips.push('Break into shorter paragraphs (1-3 sentences each)'); }
+    else { scores.structure = 40; tips.push('Paragraphs are too long — LinkedIn readers skim first'); }
+
+    // Opening line
+    if (firstLine.length > 10 && firstLine.length < 120 && !firstLine.endsWith('?')) {
+        scores.hook = 90;
+    } else if (firstLine.endsWith('?')) {
+        scores.hook = 50;
+        tips.push('Strategy says: open with a truth, not a question. Questions feel like hooks.');
+    } else {
+        scores.hook = 60;
+        tips.push('First line should be a specific truth (1-2 lines) that creates instant resonance');
+    }
+
+    // Personal / specific content
+    const personalWords = (text.match(/\bI\b|my |me |myself|restaurant|kitchen|team|hired|P&L|margin|cash flow|CPA|accounting|studying/gi) || []).length;
+    if (personalWords >= 5) { scores.specificity = 95; }
+    else if (personalWords >= 2) { scores.specificity = 70; tips.push('Add more personal/specific details — name real scenarios'); }
+    else { scores.specificity = 35; tips.push('This feels generic. Ground it in YOUR experience.'); }
+
+    // Closing
+    if (lastLine.endsWith('?') && words > 50) { scores.close = 85; }
+    else if (lastLine.length < 80 && lastLine.length > 10) { scores.close = 90; }
+    else { scores.close = 60; tips.push('End with a strong single sentence or a genuine question'); }
+
+    // Pillar alignment
+    if (pillar) { scores.pillar = 90; }
+    else { scores.pillar = 50; tips.push('Select a pillar to ensure on-brand alignment'); }
+
+    const overall = Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / Object.keys(scores).length);
+
+    let gradeColor, grade;
+    if (overall >= 85) { grade = 'A'; gradeColor = '#10B981'; }
+    else if (overall >= 70) { grade = 'B'; gradeColor = '#D97706'; }
+    else if (overall >= 55) { grade = 'C'; gradeColor = '#EF4444'; }
+    else { grade = 'D'; gradeColor = '#EF4444'; }
+
+    let html = `
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:48px;font-weight:700;color:${gradeColor};">${grade}</div>
+            <div style="font-size:14px;color:var(--gray-500);">Overall Score: ${overall}/100</div>
+        </div>
+    `;
+
+    const labels = { length: 'Length', structure: 'Structure', hook: 'Opening Line', specificity: 'Specificity', close: 'Closing', pillar: 'Pillar Fit' };
+    for (const [key, val] of Object.entries(scores)) {
+        html += `
+            <div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                    <span style="color:var(--gray-700);">${labels[key]}</span>
+                    <span style="font-weight:600;color:${val >= 80 ? '#10B981' : val >= 60 ? '#D97706' : '#EF4444'};">${val}</span>
+                </div>
+                <div class="score-bar"><div class="score-fill" style="width:${val}%"></div></div>
+            </div>
+        `;
+    }
+
+    if (tips.length > 0) {
+        html += '<div style="margin-top:16px;padding:12px;background:var(--gray-50);border-radius:8px;"><h4 style="font-size:13px;color:var(--navy);margin-bottom:8px;">Suggestions</h4>';
+        tips.forEach(t => { html += `<div style="font-size:12px;color:var(--gray-700);padding:4px 0;">&#8226; ${t}</div>`; });
+        html += '</div>';
+    }
+
+    document.getElementById('score-results').innerHTML = html;
+}
+
+function clearComposer() {
+    postText.value = '';
+    updateComposerStats();
+    document.getElementById('score-results').innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-500);font-size:14px;">Write your post and click "Score This Post" to get feedback.</div>';
+}
+
+function copyPost() {
+    navigator.clipboard.writeText(postText.value).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy to Clipboard'; }, 2000);
+    });
+}
+
+function selectIdea(el) {
+    const title = el.querySelector('h4').textContent;
+    const desc = el.querySelector('p').textContent;
+    // Switch to composer tab
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('[data-tab="composer"]').classList.add('active');
+    document.getElementById('tab-composer').classList.add('active');
+    postText.value = `${title}\n\n[Your story here — what happened, what you thought at the time]\n\n[What you understand now — the takeaway]\n\n[Closing thought or question]`;
+    postText.focus();
+    updateComposerStats();
+}
+</script>
+
+</body>
+</html>
